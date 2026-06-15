@@ -65,30 +65,44 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Auto Increment Version Code
+      - name: Set Version
+        id: version
         run: |
-         CURRENT_VERSION_CODE=$(perl -ne 'print $1 if /versionCode\s*=\s*(\d+)/' app/build.gradle.kts)
-        
-         echo "当前 Version Code 为: $CURRENT_VERSION_CODE"
-        
-         if [ -n "$CURRENT_VERSION_CODE" ]; then
-          NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+          # 读取当前 versionCode
+          CURRENT_VERSION_CODE=$(perl -ne 'print $1 if /versionCode\s*=\s*(\d+)/' app/build.gradle.kts)
+
+          echo "当前 Version Code: $CURRENT_VERSION_CODE"
+
+          if [ -n "$CURRENT_VERSION_CODE" ]; then
+            NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
           else
-          NEW_VERSION_CODE=223333
-         fi
-        
-         echo "更新后的 Version Code 为: $NEW_VERSION_CODE"
-       
-         perl -pi -e "s/versionCode\s*=\s*\d+/versionCode = $NEW_VERSION_CODE/g" app/build.gradle.kts
-        
-         perl -pi -e 's/versionName\s*=\s*".*"/versionName = "999.99"/g' app/build.gradle.kts
+            NEW_VERSION_CODE=2333
+          fi
+
+          VERSION_NAME="9999.99"
+
+          echo "Version Name: $VERSION_NAME"
+          echo "Version Code: $NEW_VERSION_CODE"
+
+          # 写入 build.gradle.kts（兼容首次运行的函数调用写法）
+          perl -pi -e "s/versionCode\s*=\s*.+/versionCode = $NEW_VERSION_CODE/g" app/build.gradle.kts
+          perl -pi -e 's/versionName\s*=\s*.+/versionName = "'"$VERSION_NAME"'"/g' app/build.gradle.kts
+
+          # 输出版本号供后续步骤使用
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$NEW_VERSION_CODE" >> $GITHUB_OUTPUT
+
+          # 在日志中醒目显示版本号
+          echo "=============================================="
+          echo "  APK 版本号: ${VERSION_NAME}(${NEW_VERSION_CODE})"
+          echo "=============================================="
+          echo "apk_version=${VERSION_NAME}(${NEW_VERSION_CODE})" >> $GITHUB_STEP_SUMMARY
 
       - name: Build Stable Release APKs
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Explicitly pass the user input to override the dynamic date version in Gradle
-        run: ./gradlew assembleOnlineStableRelease assembleOfflineStableRelease -PVERSION_NAME="${{ inputs.version_tag }}" -PAPP_ID=com.android.packageinstaller
+        run: ./gradlew assembleOnlineStableRelease assembleOfflineStableRelease -PAPP_ID=com.android.packageinstaller
 
       - name: Find and Rename Universal APKs
         id: rename_apk
