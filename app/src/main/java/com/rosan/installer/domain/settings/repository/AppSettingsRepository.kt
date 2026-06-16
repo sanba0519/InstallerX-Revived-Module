@@ -20,7 +20,8 @@ enum class StringSetting {
     PredictiveBackExitDirection,
     GithubUpdateChannel,
     CustomGithubProxyUrl,
-    InstallerBiometricAuthMode
+    InstallerBiometricAuthMode,
+    SmartAuthorizerCandidates
 }
 
 enum class IntSetting {
@@ -60,8 +61,12 @@ enum class BooleanSetting {
     DialogShowIntelligentSuggestion,
     DialogDisableNotificationOnDismiss,
     DialogShowOppoSpecial,
+    CheckAppSignature,
+    ShowSignatureInfoOnMatch,
+    ShowSignatureDetails,
     DialogAutoSilentInstall,
     DialogLongClickBackgroundInstall,
+    TryMultipleAuthorizersOnInstall,
     LabEnableModuleFlash,
     LabModuleFlashShowArt,
     LabHttpSaveFile,

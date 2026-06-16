@@ -130,10 +130,20 @@ class AppDataStore(
             register(booleanPreferencesKey("show_disable_notification_for_dialog_install"), PreferenceValueType.BOOLEAN)
         val DIALOG_SHOW_OPPO_SPECIAL =
             register(booleanPreferencesKey("show_oppo_special"), PreferenceValueType.BOOLEAN)
+        val CHECK_APP_SIGNATURE =
+            register(booleanPreferencesKey("check_app_signature"), PreferenceValueType.BOOLEAN)
+        val SHOW_SIGNATURE_INFO_ON_MATCH =
+            register(booleanPreferencesKey("show_signature_info_on_match"), PreferenceValueType.BOOLEAN)
+        val SHOW_SIGNATURE_DETAILS =
+            register(booleanPreferencesKey("show_signature_details"), PreferenceValueType.BOOLEAN)
         val DIALOG_AUTO_SILENT_INSTALL =
             register(booleanPreferencesKey("auto_silent_install"), PreferenceValueType.BOOLEAN)
         val DIALOG_LONG_CLICK_BACKGROUND_INSTALL =
             register(booleanPreferencesKey("long_click_background_install"), PreferenceValueType.BOOLEAN)
+        val TRY_MULTIPLE_AUTHORIZERS_ON_INSTALL =
+            register(booleanPreferencesKey("try_multiple_authorizers_on_install"), PreferenceValueType.BOOLEAN)
+        val SMART_AUTHORIZER_CANDIDATES =
+            register(stringPreferencesKey("smart_authorizer_candidates"), PreferenceValueType.STRING)
         val DETECT_XPOSED_MODULE =
             register(booleanPreferencesKey("detect_xposed_module"), PreferenceValueType.BOOLEAN)
         val QUICK_OPEN_LSPOSED =

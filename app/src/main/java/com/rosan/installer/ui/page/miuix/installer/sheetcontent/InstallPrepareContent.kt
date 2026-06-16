@@ -64,8 +64,7 @@ import com.rosan.installer.ui.page.miuix.installer.components.AppInfoState
 import com.rosan.installer.ui.page.miuix.widgets.MiuixInfoChipGroup
 import com.rosan.installer.ui.page.miuix.widgets.MiuixInstallerTipCard
 import com.rosan.installer.ui.page.miuix.widgets.MiuixNavigationItemWidget
-import com.rosan.installer.ui.theme.InstallerTheme
-import com.rosan.installer.ui.theme.miuixSheetCardColorDark
+import com.rosan.installer.ui.theme.miuixSheetCardColors
 import com.rosan.installer.ui.util.formatSize
 import com.rosan.installer.ui.util.isGestureNavigation
 import com.rosan.installer.util.toast
@@ -75,7 +74,6 @@ import org.koin.compose.koinInject
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardColors
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -93,7 +91,6 @@ fun InstallPrepareContent(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val isDarkMode = InstallerTheme.isDark
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val config = uiState.config
     val currentPackageName = uiState.currentPackageName
@@ -147,8 +144,40 @@ fun InstallPrepareContent(
     val tagDowngrade = stringResource(R.string.tag_downgrade)
     val downgradeWarning = stringResource(R.string.installer_prepare_type_downgrade)
     val tagSignature = stringResource(R.string.tag_signature)
+    val tagSignatureMatch = stringResource(R.string.tag_signature_match)
+    val tagSignatureRotation = stringResource(R.string.tag_signature_rotation)
+    val tagSignatureRotationUnconfirmed = stringResource(R.string.tag_signature_rotation_unconfirmed)
+    val sigNewInstall = stringResource(R.string.installer_prepare_signature_new_install)
+    val sigMatch = stringResource(R.string.installer_prepare_signature_match)
+    val sigRotationCompatible = stringResource(R.string.installer_prepare_signature_rotation_compatible)
+    val sigCandidateRotationUnconfirmed =
+        stringResource(R.string.installer_prepare_signature_candidate_rotation_unconfirmed)
     val sigMismatchWarning = stringResource(R.string.installer_prepare_signature_mismatch)
     val sigUnknownWarning = stringResource(R.string.installer_prepare_signature_unknown)
+    val sigAnalysisIssue = stringResource(R.string.installer_prepare_signature_analysis_issue)
+    val labelPendingSignature = stringResource(R.string.installer_signature_pending_package)
+    val labelInstalledSignature = stringResource(R.string.installer_signature_installed_package)
+    val labelSignatureAnalysisIssues = stringResource(R.string.installer_signature_analysis_issues)
+    val labelSignatureVerificationFailedFiles = stringResource(R.string.installer_signature_verification_failed_files)
+    val labelSignatureSplitMismatchFiles = stringResource(R.string.installer_signature_split_mismatch_files)
+    val labelSignatureDuplicateSplitNames = stringResource(R.string.installer_signature_duplicate_split_names)
+    val labelSignatureSchemes = stringResource(R.string.installer_signature_schemes)
+    val labelSignatureCertificate = stringResource(R.string.installer_signature_certificate)
+    val labelSignatureCurrentCertificate = stringResource(R.string.installer_signature_current_certificate)
+    val labelSignatureCertificateLineage = stringResource(R.string.installer_signature_certificate_lineage)
+    val labelSignatureLineageCertificate = stringResource(R.string.installer_signature_lineage_certificate)
+    val labelSignatureCurrentMarker = stringResource(R.string.installer_signature_current_marker)
+    val labelSignatureSha256 = stringResource(R.string.installer_signature_sha256)
+    val labelSignatureSha1 = stringResource(R.string.installer_signature_sha1)
+    val labelSignatureSubject = stringResource(R.string.installer_signature_subject)
+    val labelSignatureIssuer = stringResource(R.string.installer_signature_issuer)
+    val labelSignatureValidFrom = stringResource(R.string.installer_signature_valid_from)
+    val labelSignatureValidUntil = stringResource(R.string.installer_signature_valid_until)
+    val labelSignaturePublicKeyAlgorithm = stringResource(R.string.installer_signature_public_key_algorithm)
+    val labelSignatureAlgorithm = stringResource(R.string.installer_signature_algorithm)
+    val labelSignatureWarnings = stringResource(R.string.installer_signature_warnings)
+    val labelSignatureErrors = stringResource(R.string.installer_signature_errors)
+    val labelSignatureNoCertificates = stringResource(R.string.installer_signature_no_certificates)
     val tagSdk = stringResource(R.string.tag_sdk)
     val sdkIncompatibleWarning = stringResource(R.string.installer_prepare_sdk_incompatible)
     val tagArch32 = stringResource(R.string.tag_arch_32)
@@ -166,8 +195,39 @@ fun InstallPrepareContent(
             tagDowngrade = tagDowngrade,
             textDowngrade = downgradeWarning,
             tagSignature = tagSignature,
+            tagSignatureMatch = tagSignatureMatch,
+            tagSignatureRotation = tagSignatureRotation,
+            tagSignatureRotationUnconfirmed = tagSignatureRotationUnconfirmed,
+            textSigNewInstall = sigNewInstall,
+            textSigMatch = sigMatch,
+            textSigRotationCompatible = sigRotationCompatible,
+            textSigCandidateRotationUnconfirmed = sigCandidateRotationUnconfirmed,
             textSigMismatch = sigMismatchWarning,
             textSigUnknown = sigUnknownWarning,
+            textSigAnalysisIssue = sigAnalysisIssue,
+            labelPendingSignature = labelPendingSignature,
+            labelInstalledSignature = labelInstalledSignature,
+            labelSignatureAnalysisIssues = labelSignatureAnalysisIssues,
+            labelSignatureVerificationFailedFiles = labelSignatureVerificationFailedFiles,
+            labelSignatureSplitMismatchFiles = labelSignatureSplitMismatchFiles,
+            labelSignatureDuplicateSplitNames = labelSignatureDuplicateSplitNames,
+            labelSignatureSchemes = labelSignatureSchemes,
+            labelSignatureCertificate = labelSignatureCertificate,
+            labelSignatureCurrentCertificate = labelSignatureCurrentCertificate,
+            labelSignatureCertificateLineage = labelSignatureCertificateLineage,
+            labelSignatureLineageCertificate = labelSignatureLineageCertificate,
+            labelSignatureCurrentMarker = labelSignatureCurrentMarker,
+            labelSignatureSha256 = labelSignatureSha256,
+            labelSignatureSha1 = labelSignatureSha1,
+            labelSignatureSubject = labelSignatureSubject,
+            labelSignatureIssuer = labelSignatureIssuer,
+            labelSignatureValidFrom = labelSignatureValidFrom,
+            labelSignatureValidUntil = labelSignatureValidUntil,
+            labelSignaturePublicKeyAlgorithm = labelSignaturePublicKeyAlgorithm,
+            labelSignatureAlgorithm = labelSignatureAlgorithm,
+            labelSignatureWarnings = labelSignatureWarnings,
+            labelSignatureErrors = labelSignatureErrors,
+            labelSignatureNoCertificates = labelSignatureNoCertificates,
             tagSdk = tagSdk,
             textSdkIncompatible = sdkIncompatibleWarning,
             tagArch32 = tagArch32,
@@ -194,11 +254,15 @@ fun InstallPrepareContent(
     }
 
     // Execute domain logic and map to UI state within the remember block
-    val (notices, buttonTextId) = remember(
+    val installStateResult = remember(
         currentPackage,
         entityToInstall,
         isSplitUpdateMode,
         containerType,
+        settings.checkAppSignature,
+        settings.showSignatureInfoOnMatch,
+        settings.showSignatureDetails,
+        settings.detectXposedModule,
         installStateUiMapper
     ) {
         // 1. Get pure domain state
@@ -210,15 +274,17 @@ fun InstallPrepareContent(
             containerType = containerType,
             systemArch = DeviceConfig.currentArchitecture,
             systemSdkInt = Build.VERSION.SDK_INT,
+            checkAppSignature = settings.checkAppSignature,
+            showSignatureInfoOnMatch = settings.showSignatureInfoOnMatch,
+            showSignatureDetails = settings.showSignatureDetails,
             detectXposedModule = settings.detectXposedModule
         )
 
         // 2. Map to UI state
-        val uiState = installStateUiMapper.mapToUiState(domainState)
-
-        // 3. Destructure the data class components
-        Pair(uiState.notices, uiState.buttonTextId)
+        installStateUiMapper.mapToUiState(domainState)
     }
+    val notices = installStateResult.notices
+    val buttonTextId = installStateResult.buttonTextId
 
     LazyColumn(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -245,11 +311,7 @@ fun InstallPrepareContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 6.dp),
-                colors = CardColors(
-                    color = if (isDynamicColor) MiuixTheme.colorScheme.surfaceContainer else
-                        if (isDarkMode) miuixSheetCardColorDark else Color.White,
-                    contentColor = MiuixTheme.colorScheme.onSurface
-                )
+                colors = miuixSheetCardColors()
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -378,11 +440,7 @@ fun InstallPrepareContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    colors = CardColors(
-                        color = if (isDynamicColor) MiuixTheme.colorScheme.surfaceContainer else
-                            if (isDarkMode) miuixSheetCardColorDark else Color.White,
-                        contentColor = MiuixTheme.colorScheme.onSurface
-                    )
+                    colors = miuixSheetCardColors()
                 ) {
                     // Permissions List
                     if (rawBaseEntity?.permissions?.isNotEmpty() == true)
@@ -465,11 +523,7 @@ fun InstallPrepareContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
-                    colors = CardColors(
-                        color = if (isDynamicColor) MiuixTheme.colorScheme.surfaceContainer else
-                            if (isDarkMode) miuixSheetCardColorDark else Color.White,
-                        contentColor = MiuixTheme.colorScheme.onSurface
-                    )
+                    colors = miuixSheetCardColors()
                 ) {
                     if (settings.labShowFilePath) {
                         // Safely extract the source path

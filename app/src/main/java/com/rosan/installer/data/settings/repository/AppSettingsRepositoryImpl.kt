@@ -15,6 +15,7 @@ import com.rosan.installer.domain.settings.model.app.NamedPackage
 import com.rosan.installer.domain.settings.model.preferences.PredictiveBackAnimation
 import com.rosan.installer.domain.settings.model.preferences.PredictiveBackExitDirection
 import com.rosan.installer.domain.settings.model.preferences.RootMode
+import com.rosan.installer.domain.settings.model.preferences.SmartAuthorizerPreferences
 import com.rosan.installer.domain.settings.model.app.SharedUid
 import com.rosan.installer.domain.settings.repository.AppSettingsRepository
 import com.rosan.installer.domain.settings.repository.BooleanSetting
@@ -66,6 +67,9 @@ class AppSettingsRepositoryImpl(
             versionCompareInSingleLine = prefs[AppDataStore.DIALOG_VERSION_COMPARE_SINGLE_LINE] ?: false,
             sdkCompareInMultiLine = prefs[AppDataStore.DIALOG_SDK_COMPARE_MULTI_LINE] ?: false,
             showOPPOSpecial = prefs[AppDataStore.DIALOG_SHOW_OPPO_SPECIAL] ?: false,
+            checkAppSignature = prefs[AppDataStore.CHECK_APP_SIGNATURE] ?: true,
+            showSignatureInfoOnMatch = prefs[AppDataStore.SHOW_SIGNATURE_INFO_ON_MATCH] ?: false,
+            showSignatureDetails = prefs[AppDataStore.SHOW_SIGNATURE_DETAILS] ?: false,
             installerRequireBiometricAuth = BiometricAuthMode.fromValueOrDefault(
                 prefs[AppDataStore.INSTALLER_REQUIRE_BIOMETRIC_AUTH] ?: BiometricAuthMode.Disable.value
             ),
@@ -78,6 +82,11 @@ class AppSettingsRepositoryImpl(
             autoLockInstaller = prefs[AppDataStore.AUTO_LOCK_INSTALLER] ?: false,
             autoSilentInstall = prefs[AppDataStore.DIALOG_AUTO_SILENT_INSTALL] ?: false,
             longClickBackgroundInstall = prefs[AppDataStore.DIALOG_LONG_CLICK_BACKGROUND_INSTALL] ?: true,
+            tryMultipleAuthorizersOnInstall = prefs[AppDataStore.TRY_MULTIPLE_AUTHORIZERS_ON_INSTALL] ?: false,
+            smartAuthorizerCandidates = SmartAuthorizerPreferences.decode(
+                value = prefs[AppDataStore.SMART_AUTHORIZER_CANDIDATES].orEmpty(),
+                isSystemApp = capabilityProvider.isSystemApp
+            ),
             showMiuixUI = prefs[AppDataStore.UI_USE_MIUIX] ?: false,
             preferSystemIcon = prefs[AppDataStore.PREFER_SYSTEM_ICON_FOR_INSTALL] ?: false,
             showLauncherIcon = prefs[AppDataStore.SHOW_LAUNCHER_ICON] ?: true,
@@ -206,6 +215,7 @@ class AppSettingsRepositoryImpl(
             StringSetting.GithubUpdateChannel -> AppDataStore.GITHUB_UPDATE_CHANNEL
             StringSetting.CustomGithubProxyUrl -> AppDataStore.CUSTOM_GITHUB_PROXY_URL
             StringSetting.InstallerBiometricAuthMode -> AppDataStore.INSTALLER_REQUIRE_BIOMETRIC_AUTH
+            StringSetting.SmartAuthorizerCandidates -> AppDataStore.SMART_AUTHORIZER_CANDIDATES
         }
 
     private fun intKey(setting: IntSetting): Preferences.Key<Int> =
@@ -248,8 +258,12 @@ class AppSettingsRepositoryImpl(
             BooleanSetting.DialogShowIntelligentSuggestion -> AppDataStore.DIALOG_SHOW_INTELLIGENT_SUGGESTION
             BooleanSetting.DialogDisableNotificationOnDismiss -> AppDataStore.DIALOG_DISABLE_NOTIFICATION_ON_DISMISS
             BooleanSetting.DialogShowOppoSpecial -> AppDataStore.DIALOG_SHOW_OPPO_SPECIAL
+            BooleanSetting.CheckAppSignature -> AppDataStore.CHECK_APP_SIGNATURE
+            BooleanSetting.ShowSignatureInfoOnMatch -> AppDataStore.SHOW_SIGNATURE_INFO_ON_MATCH
+            BooleanSetting.ShowSignatureDetails -> AppDataStore.SHOW_SIGNATURE_DETAILS
             BooleanSetting.DialogAutoSilentInstall -> AppDataStore.DIALOG_AUTO_SILENT_INSTALL
             BooleanSetting.DialogLongClickBackgroundInstall -> AppDataStore.DIALOG_LONG_CLICK_BACKGROUND_INSTALL
+            BooleanSetting.TryMultipleAuthorizersOnInstall -> AppDataStore.TRY_MULTIPLE_AUTHORIZERS_ON_INSTALL
             BooleanSetting.LabEnableModuleFlash -> AppDataStore.LAB_ENABLE_MODULE_FLASH
             BooleanSetting.LabModuleFlashShowArt -> AppDataStore.LAB_MODULE_FLASH_SHOW_ART
             BooleanSetting.LabHttpSaveFile -> AppDataStore.LAB_HTTP_SAVE_FILE

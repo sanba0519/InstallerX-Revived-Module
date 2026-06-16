@@ -2,15 +2,21 @@
 // Copyright (C) 2025-2026 InstallerX Revived contributors
 package com.rosan.installer.domain.engine.usecase
 
+import com.rosan.installer.core.bitmask.removeFlag
 import com.rosan.installer.domain.device.provider.DeviceCapabilityProvider
 import com.rosan.installer.domain.engine.model.packageinfo.AppEntity
 import com.rosan.installer.domain.engine.exception.InstallException
 import com.rosan.installer.domain.engine.model.source.DataType
 import com.rosan.installer.domain.engine.model.install.InstallEntity
 import com.rosan.installer.domain.engine.model.error.InstallErrorType
+import com.rosan.installer.domain.engine.model.install.InstallOption
 import com.rosan.installer.domain.engine.model.install.sourcePath
 import com.rosan.installer.domain.engine.model.packageinfo.PackageAnalysisResult
+import com.rosan.installer.domain.engine.model.packageinfo.PackageSignatureAnalysis
 import com.rosan.installer.domain.engine.model.packageinfo.SignatureMatchStatus
+import com.rosan.installer.domain.engine.model.packageinfo.analyzePackageSignatureMatch
+import com.rosan.installer.domain.engine.model.packageinfo.analyzePackageSignatureSelection
+import com.rosan.installer.domain.engine.provider.InstalledPackageSignatureProvider
 import com.rosan.installer.domain.engine.repository.AppInstallerRepository
 import com.rosan.installer.domain.engine.repository.ModuleInstallerRepository
 import com.rosan.installer.domain.history.model.InstallMethod
@@ -21,10 +27,13 @@ import com.rosan.installer.domain.history.usecase.RecordOperationHistoryUseCase
 import com.rosan.installer.domain.history.usecase.VersionChangeResolver
 import com.rosan.installer.domain.history.usecase.historyErrorSummary
 import com.rosan.installer.domain.history.usecase.historyErrorType
+import com.rosan.installer.domain.privileged.exception.PrivilegedException
 import com.rosan.installer.domain.session.model.ProgressEntity
 import com.rosan.installer.domain.session.model.SelectInstallEntity
+import com.rosan.installer.domain.settings.model.config.Authorizer
 import com.rosan.installer.domain.settings.model.config.ConfigModel
 import com.rosan.installer.domain.settings.model.preferences.RootMode
+import com.rosan.installer.domain.settings.model.preferences.SmartAuthorizerPreferences
 import com.rosan.installer.domain.settings.repository.AppSettingsRepository
 import com.rosan.installer.domain.settings.repository.BooleanSetting
 import com.rosan.installer.domain.settings.repository.NamedPackageListSetting
@@ -45,6 +54,7 @@ class ProcessInstallationUseCase(
     private val appInstaller: AppInstallerRepository,
     private val moduleInstaller: ModuleInstallerRepository,
     private val capabilityProvider: DeviceCapabilityProvider,
+    private val installedPackageSignatureProvider: InstalledPackageSignatureProvider,
     private val recordOperationHistory: RecordOperationHistoryUseCase
 ) {
     companion object {
@@ -153,29 +163,41 @@ class ProcessInstallationUseCase(
      * Checks the profile's policy toggles against the analysis results.
      * Throws [InstallException] if a restriction is violated and not bypassed.
      */
-    private fun checkBlockedByProfile(config: ConfigModel, results: List<PackageAnalysisResult>) {
+    private suspend fun checkBlockedByProfile(config: ConfigModel, results: List<PackageAnalysisResult>) {
         if (config.bypassProfileRestriction) return
+        if (!appSettingsRepo.getBoolean(BooleanSetting.CheckAppSignature, true).first()) return
 
         val selectedResults = results.filter { result -> result.appEntities.any { it.selected } }
 
         for (result in selectedResults) {
             if (!shouldApplySignaturePolicy(result)) continue
 
+            val signatureAnalysis = result.appEntities.analyzePackageSignatureSelection(
+                result.installedAppInfo
+            )
+            val signatureMatchStatus = result.appEntities.analyzePackageSignatureMatch(
+                installedInfo = result.installedAppInfo,
+                hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
+            )
+
             if (!config.allowSigMismatch &&
-                result.signatureMatchStatus == SignatureMatchStatus.MISMATCH
+                (signatureMatchStatus == SignatureMatchStatus.MISMATCH ||
+                        signatureAnalysis.hasSignatureMismatchPolicyViolation())
             ) {
                 throw InstallException(
-                    InstallErrorType.BLOCKED_BY_PROFILE,
-                    "Installing with a different signature is not allowed by this profile"
+                    InstallErrorType.BLOCKED_BY_PROFILE_SIGNATURE_MISMATCH,
+                    "Installing apps with a different signature is blocked by this profile"
                 )
             }
 
             if (!config.allowSigUnknown &&
-                result.signatureMatchStatus == SignatureMatchStatus.UNKNOWN_ERROR
+                (signatureMatchStatus == SignatureMatchStatus.UNKNOWN_ERROR ||
+                        signatureMatchStatus == SignatureMatchStatus.CANDIDATE_ROTATION_UNCONFIRMED ||
+                        signatureAnalysis.hasSignatureUnknownPolicyViolation())
             ) {
                 throw InstallException(
-                    InstallErrorType.BLOCKED_BY_PROFILE,
-                    "Installing with an unverifiable signature is not allowed by this profile"
+                    InstallErrorType.BLOCKED_BY_PROFILE_SIGNATURE_UNKNOWN,
+                    "Installing apps with an unverifiable signature is blocked by this profile"
                 )
             }
         }
@@ -183,13 +205,34 @@ class ProcessInstallationUseCase(
 
     private fun shouldApplySignaturePolicy(result: PackageAnalysisResult): Boolean {
         val selectedApps = result.appEntities.filter { it.selected }.map { it.app }
-        val containerType = selectedApps.firstOrNull()?.sourceType ?: return false
+        val selectedApks = selectedApps.filter { it is AppEntity.BaseEntity || it is AppEntity.SplitEntity }
+        val containerType = selectedApks.firstOrNull()?.sourceType ?: return false
         val hasInstalledApp = result.installedAppInfo != null
-        val hasSelectedBase = selectedApps.any { it is AppEntity.BaseEntity }
-        val hasSelectedSplit = selectedApps.any { it is AppEntity.SplitEntity }
+        val hasSelectedBase = selectedApks.any { it is AppEntity.BaseEntity }
+        val hasSelectedSplit = selectedApks.any { it is AppEntity.SplitEntity }
         val isSplitUpdateMode = hasInstalledApp && hasSelectedSplit && !hasSelectedBase
 
-        return !isSplitUpdateMode && (containerType == DataType.APK || containerType == DataType.APKS)
+        return !isSplitUpdateMode && containerType.supportsApkSignaturePolicy()
+    }
+
+    private fun DataType.supportsApkSignaturePolicy() = when (this) {
+        DataType.APK,
+        DataType.APKS,
+        DataType.APKM,
+        DataType.XAPK,
+        DataType.MULTI_APK,
+        DataType.MULTI_APK_ZIP -> true
+
+        else -> false
+    }
+
+    private fun PackageSignatureAnalysis.hasSignatureMismatchPolicyViolation(): Boolean {
+        return splitSignatureMismatchFiles.isNotEmpty()
+    }
+
+    private fun PackageSignatureAnalysis.hasSignatureUnknownPolicyViolation(): Boolean {
+        return verificationFailedFiles.isNotEmpty() ||
+                duplicateSplitNames.isNotEmpty()
     }
 
     private suspend fun installApp(
@@ -217,18 +260,110 @@ class ProcessInstallationUseCase(
             )
         }
 
+        var historyConfig = config
         val result = runCatching {
-            appInstaller.doInstallWork(
+            historyConfig = installWithResolvedAuthorizer(
                 config = config,
-                entities = installEntities,
+                installEntities = installEntities,
                 blacklist = blacklist,
-                sharedUserIdBlacklist = sharedUidBlacklist,
-                sharedUserIdExemption = sharedUidWhitelist
+                sharedUidBlacklist = sharedUidBlacklist,
+                sharedUidWhitelist = sharedUidWhitelist
             )
         }
 
-        recordInstallHistory(config, analysisResults, selectedEntities, result)
+        recordInstallHistory(historyConfig, analysisResults, selectedEntities, result)
         result.onFailure { throw it }
+    }
+
+    private suspend fun installWithResolvedAuthorizer(
+        config: ConfigModel,
+        installEntities: List<InstallEntity>,
+        blacklist: List<String>,
+        sharedUidBlacklist: List<String>,
+        sharedUidWhitelist: List<String>
+    ): ConfigModel {
+        val tryMultipleAuthorizers = appSettingsRepo
+            .getBoolean(BooleanSetting.TryMultipleAuthorizersOnInstall, false)
+            .first()
+
+        if (!tryMultipleAuthorizers) {
+            submitInstall(config, installEntities, blacklist, sharedUidBlacklist, sharedUidWhitelist)
+            return config
+        }
+
+        val candidates = buildAuthorizerCandidates(config)
+        if (candidates.isEmpty()) {
+            submitInstall(config, installEntities, blacklist, sharedUidBlacklist, sharedUidWhitelist)
+            return config
+        }
+
+        var lastAuthorizerFailure: PrivilegedException? = null
+        for (authorizer in candidates) {
+            val attemptConfig = config.copy(authorizer = authorizer).withAuthorizerAdjustedInstallFlags()
+            Timber.d("Trying install with authorizer: ${attemptConfig.authorizer}")
+
+            try {
+                submitInstall(attemptConfig, installEntities, blacklist, sharedUidBlacklist, sharedUidWhitelist)
+                return attemptConfig
+            } catch (e: PrivilegedException) {
+                lastAuthorizerFailure = e
+                Timber.w(e, "Authorizer ${attemptConfig.authorizer} unavailable, trying next candidate.")
+            }
+        }
+
+        throw InstallException(
+            InstallErrorType.ALL_AUTHORIZERS_FAILED,
+            "All authorizers failed: ${lastAuthorizerFailure?.message.orEmpty()}"
+        )
+    }
+
+    private suspend fun submitInstall(
+        config: ConfigModel,
+        installEntities: List<InstallEntity>,
+        blacklist: List<String>,
+        sharedUidBlacklist: List<String>,
+        sharedUidWhitelist: List<String>
+    ) {
+        appInstaller.doInstallWork(
+            config = config,
+            entities = installEntities,
+            blacklist = blacklist,
+            sharedUserIdBlacklist = sharedUidBlacklist,
+            sharedUserIdExemption = sharedUidWhitelist
+        )
+    }
+
+    private suspend fun buildAuthorizerCandidates(config: ConfigModel): List<Authorizer> {
+        val fallbackAuthorizers = SmartAuthorizerPreferences.decode(
+            value = appSettingsRepo
+                .getString(StringSetting.SmartAuthorizerCandidates)
+                .first(),
+            isSystemApp = capabilityProvider.isSystemApp
+        )
+            .filter { it.enabled }
+            .map { it.authorizer }
+
+        return buildList {
+            if (config.authorizer != Authorizer.Global) add(config.authorizer)
+            addAll(fallbackAuthorizers)
+        }.filter { authorizer ->
+            authorizer != Authorizer.Global &&
+                    (authorizer != Authorizer.Customize || config.customizeAuthorizer.isNotBlank())
+        }.distinct()
+    }
+
+    private fun ConfigModel.withAuthorizerAdjustedInstallFlags(): ConfigModel {
+        if (authorizer != Authorizer.Dhizuku) return this
+
+        val flags = installFlags
+            .removeFlag(InstallOption.AllUsers.value)
+            .removeFlag(InstallOption.GrantAllRequestedPermissions.value)
+
+        return copy(
+            installFlags = flags,
+            forAllUser = false,
+            allowAllRequestedPermissions = false
+        )
     }
 
     private suspend fun recordInstallHistory(

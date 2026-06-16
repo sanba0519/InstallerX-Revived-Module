@@ -3,11 +3,14 @@
 package com.rosan.installer.framework.privileged.provider
 
 import android.content.ComponentName
-import com.rosan.installer.framework.privileged.util.useDirectPrivileged
-import com.rosan.installer.framework.privileged.util.getSpecialAuth
+import com.rosan.installer.domain.device.model.ShizukuMode
 import com.rosan.installer.domain.device.provider.DeviceCapabilityProvider
 import com.rosan.installer.domain.privileged.provider.AppOpsProvider
 import com.rosan.installer.domain.settings.model.config.Authorizer
+import com.rosan.installer.framework.privileged.util.UserServiceUidMode
+import com.rosan.installer.framework.privileged.util.getSpecialAuth
+import com.rosan.installer.framework.privileged.util.useDirectPrivileged
+import com.rosan.installer.framework.privileged.util.useUserService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -17,12 +20,24 @@ class AppOpsProviderImpl(
 ) : AppOpsProvider {
     override suspend fun setDefaultInstaller(authorizer: Authorizer, component: ComponentName, lock: Boolean) {
         withContext(Dispatchers.IO) {
-            useDirectPrivileged(
-                isSystemApp = capabilityProvider.isSystemApp,
-                authorizer = authorizer,
-                special = getSpecialAuth(authorizer)
-            ) { privileged ->
-                privileged.setDefaultInstaller(component, lock)
+            val special = getSpecialAuth(authorizer)
+            if (shouldUseUserServiceForDefaultInstaller(authorizer)) {
+                useUserService(
+                    isSystemApp = capabilityProvider.isSystemApp,
+                    authorizer = authorizer,
+                    special = null,
+                    uidMode = UserServiceUidMode.SystemIfRoot
+                ) { userService ->
+                    userService.privileged.setDefaultInstaller(component, lock)
+                }
+            } else {
+                useDirectPrivileged(
+                    isSystemApp = capabilityProvider.isSystemApp,
+                    authorizer = authorizer,
+                    special = special
+                ) { privileged ->
+                    privileged.setDefaultInstaller(component, lock)
+                }
             }
         }
     }
@@ -32,8 +47,7 @@ class AppOpsProviderImpl(
             useDirectPrivileged(
                 isSystemApp = capabilityProvider.isSystemApp,
                 authorizer = authorizer,
-                customizeAuthorizer = customizeAuthorizer,
-                special = getSpecialAuth(authorizer)
+                customizeAuthorizer = customizeAuthorizer
             ) { privileged ->
                 try {
                     privileged.setAdbVerify(enabled)
@@ -47,11 +61,11 @@ class AppOpsProviderImpl(
     }
 
     override suspend fun setPackageNetworkingEnabled(authorizer: Authorizer, uid: Int, enabled: Boolean) {
+        if (authorizer != Authorizer.Shizuku) throw IllegalStateException("Unsupported authorizer: $authorizer")
         withContext(Dispatchers.IO) {
             useDirectPrivileged(
                 isSystemApp = capabilityProvider.isSystemApp,
-                authorizer = authorizer,
-                special = getSpecialAuth(authorizer)
+                authorizer = authorizer
             ) { privileged ->
                 try {
                     privileged.setPackageNetworkingEnabled(uid, enabled)
@@ -63,4 +77,9 @@ class AppOpsProviderImpl(
             }
         }
     }
+
+    private fun shouldUseUserServiceForDefaultInstaller(authorizer: Authorizer) =
+        authorizer == Authorizer.Root ||
+                (authorizer == Authorizer.Shizuku &&
+                        capabilityProvider.shizukuModeFlow.value == ShizukuMode.ROOT)
 }

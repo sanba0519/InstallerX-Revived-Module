@@ -9,6 +9,7 @@
 
 [versions]
 agp = "9.2.1"
+apksig = "9.2.1"
 biometric = "1.4.0-alpha07"
 focusApi = "1.4"
 kotlin = "2.4.0"
@@ -20,13 +21,14 @@ material3 = "1.5.0-alpha21"
 room = "3.0.0-alpha06"
 ktx-serialization = "1.11.0"
 rikka-shizuku = "13.1.5"
-koin-bom = "4.2.1"
+koin-bom = "4.2.2"
 datastore = "1.2.1"
 aboutLibraries = "14.2.1"
 appiconloader = "1.5.0"
+androidx-annotation = "1.10.0"
 timber = "5.0.1"
-miuix = "0.9.1-fb3d442d-SNAPSHOT"
-okhttp = "5.3.2"
+miuix = "0.9.2"
+okhttp = "5.4.0"
 monetcompat = "0.4.1"
 materialKolor = "5.0.0-alpha07"
 navigation3 = "1.1.2"
@@ -56,14 +58,16 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprof
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+android-tools-apksig = { module = "com.android.tools.build:apksig", version.ref = "apksig" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidx-annotation" }
 androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.19.0" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version = "1.13.0" }
 androidx-lifecycle = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
-androix-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashScreen" }
+androidx-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashScreen" }
 
 focus-api = { module = "com.xzakota.hyper.notification:focus-api", version.ref = "focusApi" }
 compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "compose" }
@@ -88,6 +92,7 @@ ktx-serializationJson = { group = "org.jetbrains.kotlinx", name = "kotlinx-seria
 # AndroidHiddenApiBypass
 # https://github.com/LSPosed/AndroidHiddenApiBypass
 hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version = "6.1" }
+commons-cli = { group = "commons-cli", name = "commons-cli", version = "1.11.0" }
 
 # Koin Inject
 # https://insert-koin.io/docs/setup/koin
@@ -108,11 +113,6 @@ appiconloader = { module = "me.zhanghai.android.appiconloader:appiconloader", ve
 # Dhizuku-API
 # https://github.com/iamr0s/Dhizuku-API
 iamr0s-dhizuku-api = { group = "io.github.iamr0s", name = "Dhizuku-API", version = "2.5.4" }
-
-# AndroidAppProcess
-# https://github.com/iamr0s/AndroidAppProcess
-# iamr0s-androidAppProcess = { group = "io.github.iamr0s", name = "AndroidAppProcess", version = "1.4.1" }
-iamr0s-androidAppProcess = { group = "com.github.wxxsfxyzm", name = "AndroidAppProcess", version = "v1.4.1-revived" }
 
 # Core module (required for accessing library data)
 aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "aboutLibraries" }
