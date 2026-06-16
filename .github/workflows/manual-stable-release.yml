@@ -1,7 +1,6 @@
 name: Manual Stable Release
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
     inputs:
@@ -125,6 +124,10 @@ jobs:
 
             echo "Renaming $ORIGINAL_APK -> $NEW_APK_PATH"
             mv "$ORIGINAL_APK" "$NEW_APK_PATH"
+
+            if [ "$FLAVOR" = "online" ]; then
+              echo "online_apk=${NEW_APK_PATH}" >> $GITHUB_OUTPUT
+            fi
           done
 
       - name: Create GitHub Release
@@ -140,3 +143,14 @@ jobs:
           generate_release_notes: false
           files: |
             app/build/outputs/apk/onlineStable/release/InstallerX-Revived-online-${{ inputs.version_tag }}.apk
+
+      - name: Upload to Telegram
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          BOT_CI_SESSION: ${{ secrets.BOT_CI_SESSION }}
+        run: |
+          pip3 install telethon
+          python3 .github/bot.py "${{ steps.rename_apks.outputs.online_apk }}"
