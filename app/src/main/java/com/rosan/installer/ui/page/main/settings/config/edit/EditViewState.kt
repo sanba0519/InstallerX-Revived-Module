@@ -14,6 +14,7 @@ import com.rosan.installer.domain.settings.model.config.InstallerMode
 import com.rosan.installer.domain.settings.model.app.NamedPackage
 import com.rosan.installer.domain.settings.model.config.PackageSource
 import com.rosan.installer.domain.settings.model.config.ToastMode
+import com.rosan.installer.ui.util.isDhizukuActive
 
 data class EditViewState(
     val data: Data = Data.build(ConfigModel.default),
@@ -24,7 +25,8 @@ data class EditViewState(
     // Global states integrated into the view state
     val globalAuthorizer: Authorizer = Authorizer.Global,
     val globalInstallerBiometricAuthMode: BiometricAuthMode = BiometricAuthMode.Disable,
-    val checkAppSignature: Boolean = true
+    val checkAppSignature: Boolean = true,
+    val labRespectPlatformInstallPolicy: Boolean = false
 ) {
     // Computed property for unsaved changes
     val hasUnsavedChanges: Boolean
@@ -37,7 +39,9 @@ data class EditViewState(
             with(data) {
                 if (errorName) errors.add(R.string.config_error_name)
                 if (errorCustomizeAuthorizer) errors.add(R.string.config_error_customize_authorizer)
-                if (errorInstaller) errors.add(R.string.config_error_installer)
+                if (errorInstaller && !isDhizukuActive(authorizer, globalAuthorizer)) {
+                    errors.add(R.string.config_error_installer)
+                }
                 if (errorInstallRequester) errors.add(R.string.config_error_package_not_found)
             }
             return errors
@@ -52,6 +56,7 @@ data class EditViewState(
         val authorizer: Authorizer,
         val customizeAuthorizer: String,
         val installMode: InstallMode,
+        val autoApproveSession: Boolean,
         val toastMode: ToastMode,
         val enableCustomizePackageSource: Boolean,
         val packageSource: PackageSource,
@@ -96,6 +101,7 @@ data class EditViewState(
             authorizer = this.authorizer,
             customizeAuthorizer = if (this.authorizerCustomize) this.customizeAuthorizer else "",
             installMode = this.installMode,
+            autoApproveSession = this.autoApproveSession,
             toastMode = this.toastMode,
             enableCustomizeInstallReason = this.enableCustomizeInstallReason,
             installReason = this.installReason,
@@ -135,6 +141,7 @@ data class EditViewState(
                 customizeAuthorizer = config.customizeAuthorizer,
                 toastMode = config.toastMode,
                 installMode = config.installMode,
+                autoApproveSession = config.autoApproveSession,
                 enableCustomizePackageSource = config.enableCustomizePackageSource,
                 enableCustomizeInstallReason = config.enableCustomizeInstallReason,
                 installReason = config.installReason,

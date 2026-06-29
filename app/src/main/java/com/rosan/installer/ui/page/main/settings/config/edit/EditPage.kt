@@ -12,20 +12,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.add
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -36,6 +31,7 @@ import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -47,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,6 +80,7 @@ fun EditPage(
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     var showUnsavedDialog by remember { mutableStateOf(false) }
+    var showAutoApproveSessionDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         topAppBarState.heightOffset = topAppBarState.heightOffsetLimit
@@ -105,6 +101,39 @@ fun EditPage(
         errorMessages = state.activeErrorResIds.map { stringResource(it) }
     )
 
+    if (showAutoApproveSessionDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showAutoApproveSessionDialog = false
+            },
+            title = {
+                Text(text = stringResource(R.string.warning))
+            },
+            text = {
+                Text(text = stringResource(R.string.config_auto_approve_session_warning))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAutoApproveSessionDialog = false
+                        dispatch(EditViewAction.ChangeDataAutoApproveSession(true))
+                    }
+                ) {
+                    Text(text = stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showAutoApproveSessionDialog = false
+                    }
+                ) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     val shouldInterceptBackPress = state.hasUnsavedChanges || state.hasErrors
 
     BackHandler(enabled = shouldInterceptBackPress) {
@@ -114,8 +143,6 @@ fun EditPage(
     EditEventCollector(viewModel, snackBarHostState)
 
     val focusManager = LocalFocusManager.current
-    val layoutDirection = LocalLayoutDirection.current
-    val horizontalSafeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal).asPaddingValues()
 
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
@@ -156,7 +183,6 @@ fun EditPage(
         floatingActionButton = {
             SmallExtendedFloatingActionButton(
                 modifier = Modifier.padding(
-                    end = horizontalSafeInsets.calculateEndPadding(layoutDirection),
                     bottom = 16.dp
                 ),
                 icon = {
@@ -180,12 +206,7 @@ fun EditPage(
             modifier = Modifier
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
-            contentPadding = PaddingValues(
-                start = horizontalSafeInsets.calculateStartPadding(layoutDirection),
-                top = paddingValues.calculateTopPadding(),
-                end = horizontalSafeInsets.calculateEndPadding(layoutDirection),
-                bottom = paddingValues.calculateBottomPadding() + 80.dp
-            ),
+            contentPadding = paddingValues + PaddingValues(bottom = 96.dp),
             state = listState,
         ) {
             // --- Group 1: Main Settings ---
@@ -193,9 +214,23 @@ fun EditPage(
                 SegmentedColumn(
                     title = stringResource(R.string.config_label_main_settings)
                 ) {
-                    item { DataNameWidget(state, dispatch, { DataDescriptionWidget(state, dispatch) }) }
+                    item {
+                        DataNameWidget(
+                            state,
+                            dispatch,
+                            { DataDescriptionWidget(state, dispatch) })
+                    }
                     dataAuthorizerWidget(state, dispatch)
                     item { DataInstallModeWidget(state, dispatch) }
+                    item {
+                        DataAutoApproveSessionWidget(
+                            state = state,
+                            dispatch = dispatch,
+                            onEnableRequest = {
+                                showAutoApproveSessionDialog = true
+                            }
+                        )
+                    }
                     if (state.globalInstallerBiometricAuthMode == BiometricAuthMode.FollowConfig)
                         item { DataRequireBiometricAuthWidget(state, dispatch) }
                     item { DataToastModeWidget(state, dispatch) }
@@ -230,13 +265,19 @@ fun EditPage(
                     item { DataForAllUserWidget(state, dispatch) }
                     item { DataAllowTestOnlyWidget(state, dispatch) }
                     item { DataAllowDowngradeWidget(state, dispatch) }
-                    if (state.checkAppSignature) {
-                        item { DataAllowSigMismatchWidget(state, dispatch) }
-                        item { DataAllowSigUnknownWidget(state, dispatch) }
+                    if (isAtLeastUpsideDownCake) item {
+                        DataBypassLowTargetSdkWidget(
+                            state,
+                            dispatch
+                        )
                     }
-                    if (isAtLeastUpsideDownCake) item { DataBypassLowTargetSdkWidget(state, dispatch) }
                     item { DataAllowAllRequestedPermissionsWidget(state, dispatch) }
-                    if (isAtLeastUpsideDownCake) item { DataRequestUpdateOwnershipWidget(state, dispatch) }
+                    if (isAtLeastUpsideDownCake) item {
+                        DataRequestUpdateOwnershipWidget(
+                            state,
+                            dispatch
+                        )
+                    }
                 }
             }
 
@@ -247,10 +288,12 @@ fun EditPage(
                 ) {
                     item { DataSplitChooseAllWidget(state, dispatch) }
                     item { DataApkChooseAllWidget(state, dispatch) }
+                    if (state.checkAppSignature) {
+                        item { DataAllowSigMismatchWidget(state, dispatch) }
+                        item { DataAllowSigUnknownWidget(state, dispatch) }
+                    }
                 }
             }
-
-            item { Spacer(Modifier.navigationBarsPadding()) }
         }
     }
 }

@@ -2,8 +2,9 @@
 // Copyright (C) 2025-2026 InstallerX Revived contributors
 package com.rosan.installer.domain.settings.model.config
 
-import com.rosan.installer.core.env.DeviceConfig
 import com.rosan.installer.core.device.model.Manufacturer
+import com.rosan.installer.core.env.DeviceConfig
+import com.rosan.installer.domain.session.model.InstallSourceConfidence
 
 /**
  * Represents the complete business object for a configuration
@@ -15,6 +16,7 @@ data class ConfigModel(
     val authorizer: Authorizer,
     val customizeAuthorizer: String,
     val installMode: InstallMode,
+    val autoApproveSession: Boolean = false,
     val toastMode: ToastMode = ToastMode.Disable,
     val enableCustomizeInstallReason: Boolean = false,
     val installReason: InstallReason = InstallReason.UNKNOWN,
@@ -58,6 +60,10 @@ data class ConfigModel(
     val uninstallFlags: Int = 0,
     val callingFromUid: Int? = null,
     val initiatorPackageName: String? = null,
+    val installSourceUid: Int? = null,
+    val installSourcePackageCandidates: List<String> = emptyList(),
+    val installSourceConfidence: InstallSourceConfidence = InstallSourceConfidence.UNKNOWN,
+    val notUnknownSource: Boolean = false,
     val allowInstallWithoutUserAction: Boolean = false
 ) {
     companion object {
@@ -66,6 +72,7 @@ data class ConfigModel(
             authorizer = Authorizer.Global,
             customizeAuthorizer = "",
             installMode = InstallMode.Dialog,
+            autoApproveSession = false,
             toastMode = ToastMode.Disable,
             enableCustomizeInstallReason = false,
             installReason = InstallReason.UNKNOWN,
@@ -100,6 +107,7 @@ data class ConfigModel(
             authorizer = Authorizer.Global,
             customizeAuthorizer = "",
             installMode = InstallMode.Dialog,
+            autoApproveSession = false,
             toastMode = ToastMode.Disable,
             enableCustomizeInstallReason = false,
             installReason = InstallReason.UNKNOWN,
