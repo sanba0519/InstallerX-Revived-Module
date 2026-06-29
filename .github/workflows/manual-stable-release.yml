@@ -67,23 +67,26 @@ jobs:
       - name: Set Version
         id: version
         run: |
-          # 读取当前 versionCode
-          CURRENT_VERSION_CODE=$(perl -ne 'print $1 if /versionCode\s*=\s*(\d+)/' app/build.gradle.kts)
+          # 从远程 tag 中查找上一次 CI 的 version code
+          # tag 命名规则: version-code-<数字>，如 version-code-2333
+          LAST_VERSION_CODE=$(git ls-remote --tags origin 'refs/tags/version-code-*' \
+            | sed 's/.*\/version-code-//' \
+            | sort -n \
+            | tail -n 1)
 
-          echo "当前 Version Code: $CURRENT_VERSION_CODE"
-
-          if [ -n "$CURRENT_VERSION_CODE" ]; then
-            NEW_VERSION_CODE=$((CURRENT_VERSION_CODE + 1))
+          if [ -n "$LAST_VERSION_CODE" ]; then
+            NEW_VERSION_CODE=$((LAST_VERSION_CODE + 1))
           else
             NEW_VERSION_CODE=2333
           fi
 
           VERSION_NAME="9999.99"
 
-          echo "Version Name: $VERSION_NAME"
-          echo "Version Code: $NEW_VERSION_CODE"
+          echo "上次 CI Version Code: ${LAST_VERSION_CODE:-无（首次运行）}"
+          echo "本次 Version Name: $VERSION_NAME"
+          echo "本次 Version Code: $NEW_VERSION_CODE"
 
-          # 写入 build.gradle.kts（兼容首次运行的函数调用写法）
+          # 写入 build.gradle.kts（替换函数调用为数字字面量）
           perl -pi -e "s/versionCode\s*=\s*.+/versionCode = $NEW_VERSION_CODE/g" app/build.gradle.kts
           perl -pi -e 's/versionName\s*=\s*.+/versionName = "'"$VERSION_NAME"'"/g' app/build.gradle.kts
 
@@ -143,6 +146,11 @@ jobs:
           generate_release_notes: false
           files: |
             app/build/outputs/apk/onlineStable/release/InstallerX-Revived-online-${{ inputs.version_tag }}.apk
+
+      - name: Push Version Code Tag
+        run: |
+          git tag "version-code-${{ steps.version.outputs.version_code }}"
+          git push origin "version-code-${{ steps.version.outputs.version_code }}"
 
       - name: Upload to Telegram
         env:
