@@ -7,7 +7,8 @@ import sys
 API_ID = os.environ.get("API_ID")
 API_HASH = os.environ.get("API_HASH")
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = int(os.environ.get("CHAT_ID"))
+_chat_id_raw = os.environ.get("CHAT_ID", "")
+CHAT_ID = int(_chat_id_raw) if _chat_id_raw else None
 BOT_CI_SESSION = os.environ.get("BOT_CI_SESSION")
 
 async def send_telegram_files(files):
@@ -31,6 +32,9 @@ async def send_telegram_files(files):
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
+        if CHAT_ID is None:
+            print("[-] CHAT_ID is not set, cannot send files")
+            sys.exit(1)
         # Get all file paths from command-line arguments
         apk_files = sys.argv[1:]
         print(f"[+] Found files to upload: {apk_files}")
