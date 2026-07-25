@@ -4,6 +4,7 @@ package com.rosan.installer.data.settings.repository
 
 import android.os.Build
 import androidx.datastore.preferences.core.Preferences
+import com.rosan.installer.core.env.AppConfig
 import com.rosan.installer.data.settings.local.datastore.AppDataStore
 import com.rosan.installer.domain.device.provider.DeviceCapabilityProvider
 import com.rosan.installer.domain.settings.model.app.NamedPackage
@@ -58,7 +59,9 @@ class AppSettingsRepositoryImpl(
             ),
             alwaysUseRootInSystem = prefs[AppDataStore.ALWAYS_USE_ROOT_IN_SYSTEM] ?: false,
             customizeAuthorizer = prefs[AppDataStore.CUSTOMIZE_AUTHORIZER] ?: "",
+            hideIdenticalInstallComparisons = prefs[AppDataStore.DIALOG_HIDE_IDENTICAL_COMPARISONS] ?: true,
             showDialogInstallExtendedMenu = prefs[AppDataStore.DIALOG_SHOW_EXTENDED_MENU] ?: false,
+            expandDialogTemporarySettingsByDefault = prefs[AppDataStore.DIALOG_EXPAND_TEMPORARY_SETTINGS_BY_DEFAULT] ?: false,
             showSmartSuggestion = prefs[AppDataStore.DIALOG_SHOW_INTELLIGENT_SUGGESTION] ?: true,
             disableNotificationForDialogInstall = prefs[AppDataStore.DIALOG_DISABLE_NOTIFICATION_ON_DISMISS] ?: false,
             showDialogWhenPressingNotification = prefs[AppDataStore.SHOW_DIALOG_WHEN_PRESSING_NOTIFICATION] ?: true,
@@ -131,7 +134,9 @@ class AppSettingsRepositoryImpl(
             labShowFilePath = prefs[AppDataStore.LAB_SHOW_FILE_PATH] ?: false,
             labShowInstallInitiator = prefs[AppDataStore.LAB_SHOW_INSTALL_INITIATOR] ?: false,
             labInstallWithoutUserAction = prefs[AppDataStore.LAB_INSTALL_WITHOUT_USER_ACTION] ?: false,
-            labRespectPlatformInstallPolicy = prefs[AppDataStore.LAB_RESPECT_PLATFORM_INSTALL_POLICY] ?: false,
+            labRespectPlatformInstallPolicy =
+                AppConfig.isRespectPlatformInstallPolicyAvailable &&
+                        (prefs[AppDataStore.LAB_RESPECT_PLATFORM_INSTALL_POLICY] ?: false),
             enableFileLogging = prefs[AppDataStore.ENABLE_FILE_LOGGING] ?: true,
             // UI State
             themeMode = ThemeMode.fromValueOrDefault(prefs[AppDataStore.THEME_MODE] ?: ThemeMode.SYSTEM.name),
@@ -174,7 +179,13 @@ class AppSettingsRepositoryImpl(
         appDataStore.putBoolean(booleanKey(setting), value)
 
     override fun getBoolean(setting: BooleanSetting, default: Boolean): Flow<Boolean> =
-        appDataStore.getBoolean(booleanKey(setting), default)
+        appDataStore.getBoolean(booleanKey(setting), default).map { value ->
+            if (setting == BooleanSetting.LabRespectPlatformInstallPolicy) {
+                value && AppConfig.isRespectPlatformInstallPolicyAvailable
+            } else {
+                value
+            }
+        }
 
     override suspend fun putNamedPackageList(
         setting: NamedPackageListSetting,
@@ -254,9 +265,11 @@ class AppSettingsRepositoryImpl(
             BooleanSetting.ApplySelectedFirst -> AppDataStore.APPLY_SELECTED_FIRST
             BooleanSetting.ApplyShowSystemApp -> AppDataStore.APPLY_SHOW_SYSTEM_APP
             BooleanSetting.ApplyShowPackageName -> AppDataStore.APPLY_SHOW_PACKAGE_NAME
+            BooleanSetting.DialogHideIdenticalComparisons -> AppDataStore.DIALOG_HIDE_IDENTICAL_COMPARISONS
             BooleanSetting.DialogVersionCompareSingleLine -> AppDataStore.DIALOG_VERSION_COMPARE_SINGLE_LINE
             BooleanSetting.DialogSdkCompareMultiLine -> AppDataStore.DIALOG_SDK_COMPARE_MULTI_LINE
             BooleanSetting.DialogShowExtendedMenu -> AppDataStore.DIALOG_SHOW_EXTENDED_MENU
+            BooleanSetting.DialogExpandTemporarySettingsByDefault -> AppDataStore.DIALOG_EXPAND_TEMPORARY_SETTINGS_BY_DEFAULT
             BooleanSetting.DialogShowIntelligentSuggestion -> AppDataStore.DIALOG_SHOW_INTELLIGENT_SUGGESTION
             BooleanSetting.DialogDisableNotificationOnDismiss -> AppDataStore.DIALOG_DISABLE_NOTIFICATION_ON_DISMISS
             BooleanSetting.DialogShowOppoSpecial -> AppDataStore.DIALOG_SHOW_OPPO_SPECIAL
