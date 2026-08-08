@@ -120,15 +120,15 @@ jobs:
           echo "Building APK with package: com.android.packageinstaller"
           ./gradlew assembleOnlineStableRelease -PAPP_ID=com.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
-          # 备份第一个 APK
-          mkdir -p app/build/outputs/apk/backup
-          cp app/build/outputs/apk/onlineStable/release/*.apk app/build/outputs/apk/backup/android.apk
+          # 备份第一个 APK (保存到 build 目录之外以避免被 clean 删除)
+          mkdir -p /tmp/apk-backup
+          cp app/build/outputs/apk/onlineStable/release/*.apk /tmp/apk-backup/android.apk
 
           echo "Building APK with package: com.google.android.packageinstaller"
           ./gradlew clean assembleOnlineStableRelease -PAPP_ID=com.google.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
           # 恢复第一个 APK
-          cp app/build/outputs/apk/backup/android.apk app/build/outputs/apk/onlineStable/release/temp-android.apk
+          cp /tmp/apk-backup/android.apk app/build/outputs/apk/onlineStable/release/temp-android.apk
 
       - name: Find and Rename APKs
         id: rename_apk
