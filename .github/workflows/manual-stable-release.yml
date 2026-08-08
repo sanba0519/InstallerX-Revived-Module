@@ -120,8 +120,15 @@ jobs:
           echo "Building APK with package: com.android.packageinstaller"
           ./gradlew assembleOnlineStableRelease -PAPP_ID=com.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
+          # 备份第一个 APK
+          mkdir -p app/build/outputs/apk/backup
+          cp app/build/outputs/apk/onlineStable/release/*.apk app/build/outputs/apk/backup/android.apk
+
           echo "Building APK with package: com.google.android.packageinstaller"
-          ./gradlew assembleOnlineStableRelease -PAPP_ID=com.google.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
+          ./gradlew clean assembleOnlineStableRelease -PAPP_ID=com.google.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
+
+          # 恢复第一个 APK
+          cp app/build/outputs/apk/backup/android.apk app/build/outputs/apk/onlineStable/release/temp-android.apk
 
       - name: Find and Rename APKs
         id: rename_apk
@@ -129,41 +136,30 @@ jobs:
           PROJECT_NAME="InstallerX-Revived"
           APK_DIR="app/build/outputs/apk/onlineStable/release/"
 
-          # 查找所有 APK 文件
-          APKS=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk")
-
-          if [ -z "$APKS" ]; then
-            echo "ERROR: No APK found in $APK_DIR!"
-            ls -R app/build/outputs/apk
+          # 重命名两个 APK
+          if [ -f "${APK_DIR}temp-android.apk" ]; then
+            ANDROID_APK="${APK_DIR}${PROJECT_NAME}-android.apk"
+            mv "${APK_DIR}temp-android.apk" "$ANDROID_APK"
+            echo "Android APK: $ANDROID_APK"
+            echo "android_apk=${ANDROID_APK}" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: Android APK not found!"
             exit 1
           fi
 
-          # 重命名并识别两个包
-          ANDROID_APK=""
-          GOOGLE_APK=""
+          # 查找 Google APK（第二次构建的结果）
+          GOOGLE_APK_ORIGINAL=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*android.apk" | head -n 1)
 
-          for apk in $APKS; do
-            # 使用 aapt 或文件名判断包名（这里假设构建顺序固定）
-            # 第一个构建的是 com.android.packageinstaller
-            # 第二个构建的是 com.google.android.packageinstaller
-
-            if [ -z "$ANDROID_APK" ]; then
-              NEW_NAME="${PROJECT_NAME}-android.apk"
-              NEW_PATH="${APK_DIR}${NEW_NAME}"
-              echo "Renaming $apk -> $NEW_PATH (com.android.packageinstaller)"
-              mv "$apk" "$NEW_PATH"
-              ANDROID_APK="$NEW_PATH"
-            elif [ -z "$GOOGLE_APK" ]; then
-              NEW_NAME="${PROJECT_NAME}-google.apk"
-              NEW_PATH="${APK_DIR}${NEW_NAME}"
-              echo "Renaming $apk -> $NEW_PATH (com.google.android.packageinstaller)"
-              mv "$apk" "$NEW_PATH"
-              GOOGLE_APK="$NEW_PATH"
-            fi
-          done
-
-          echo "android_apk=${ANDROID_APK}" >> $GITHUB_OUTPUT
-          echo "google_apk=${GOOGLE_APK}" >> $GITHUB_OUTPUT
+          if [ -n "$GOOGLE_APK_ORIGINAL" ]; then
+            GOOGLE_APK="${APK_DIR}${PROJECT_NAME}-google.apk"
+            mv "$GOOGLE_APK_ORIGINAL" "$GOOGLE_APK"
+            echo "Google APK: $GOOGLE_APK"
+            echo "google_apk=${GOOGLE_APK}" >> $GITHUB_OUTPUT
+          else
+            echo "ERROR: Google APK not found!"
+            ls -lah "$APK_DIR"
+            exit 1
+          fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
