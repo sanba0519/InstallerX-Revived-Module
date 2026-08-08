@@ -3,9 +3,6 @@ name: Manual Stable Release
 on:
   workflow_dispatch:
     inputs:
-      version_tag:
-        description: 'Input version tag exactly (e.g. 26.03 or 26.03.01)'
-        required: true
       merge_upstream:
         description: 'Merge from upstream before building'
         type: boolean
@@ -160,26 +157,6 @@ jobs:
             ls -lah "$APK_DIR"
             exit 1
           fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          name: "InstallerX Revived stable ${{ inputs.version_tag }}"
-          # Use the exact input as the tag name
-          tag_name: ${{ inputs.version_tag }}
-          # Publish as draft so you can manually write the changelog and publish it later
-          draft: true
-          prerelease: false
-          # Explicitly prevent GitHub from auto-generating release notes in the body
-          generate_release_notes: false
-          files: |
-            ${{ steps.rename_apk.outputs.android_apk }}
-            ${{ steps.rename_apk.outputs.google_apk }}
-
-      - name: Push Version Code Tag
-        run: |
-          git tag "version-code-${{ steps.version.outputs.version_code }}"
-          git push origin "version-code-${{ steps.version.outputs.version_code }}"
 
       - name: Upload to Telegram
         continue-on-error: true
