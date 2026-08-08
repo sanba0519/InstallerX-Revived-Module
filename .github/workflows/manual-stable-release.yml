@@ -1,12 +1,15 @@
 name: Manual Stable Release
 
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       version_tag:
         description: 'Input version tag exactly (e.g. 26.03 or 26.03.01)'
         required: true
+      merge_upstream:
+        description: 'Merge from upstream before building'
+        type: boolean
+        default: true
 
 jobs:
   build_and_release:
@@ -22,15 +25,19 @@ jobs:
           fetch-depth: 0
 
       - name: Merge upstream
+        if: ${{ inputs.merge_upstream }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote add upstream https://github.com/wxxsfxyzm/InstallerX-Revived.git
           git fetch upstream main
-          git merge upstream/main --no-edit || {
-            echo "Merge failed or already up to date — continuing anyway"
-            git merge --abort 2>/dev/null || true
-          }
+          echo "Merging upstream/main into current branch..."
+          if ! git merge upstream/main --no-edit; then
+            echo "❌ Merge conflict detected! Please resolve conflicts locally and try again."
+            git merge --abort
+            exit 1
+          fi
+          echo "✅ Successfully merged upstream/main"
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -78,66 +85,85 @@ jobs:
       - name: Set Version
         id: version
         run: |
-          # 从远程 tag 中查找上一次 CI 的 version code
-          # tag 命名规则: version-code-<数字>，如 version-code-2333
-          LAST_VERSION_CODE=$(git ls-remote --tags origin 'refs/tags/version-code-*' \
-            | sed 's/.*\/version-code-//' \
-            | sort -n \
-            | tail -n 1)
+          # 使用日期生成 version code: YYYYMMDD 格式
+          # 例如 2026-08-09 -> 20260809
+          VERSION_CODE=$(date +%Y%m%d)
+          BUILD_DATE=$(date +%Y%m%d)
 
-          if [ -n "$LAST_VERSION_CODE" ]; then
-            NEW_VERSION_CODE=$((LAST_VERSION_CODE + 1))
-          else
-            NEW_VERSION_CODE=2333
-          fi
+          # Version name 格式: 用户输入的 tag (日期)
+          # 例如: 222222.33 (20260809)
+          VERSION_TAG="${{ inputs.version_tag }}"
+          VERSION_NAME="${VERSION_TAG} (${BUILD_DATE})"
 
-          VERSION_NAME="9999.99"
-
-          echo "上次 CI Version Code: ${LAST_VERSION_CODE:-无（首次运行）}"
           echo "本次 Version Name: $VERSION_NAME"
-          echo "本次 Version Code: $NEW_VERSION_CODE"
+          echo "本次 Version Code: $VERSION_CODE"
 
           # 写入 build.gradle.kts（替换函数调用为数字字面量）
-          perl -pi -e "s/versionCode\s*=\s*.+/versionCode = $NEW_VERSION_CODE/g" app/build.gradle.kts
+          perl -pi -e "s/versionCode\s*=\s*.+/versionCode = $VERSION_CODE/g" app/build.gradle.kts
           perl -pi -e 's/versionName\s*=\s*.+/versionName = "'"$VERSION_NAME"'"/g' app/build.gradle.kts
 
           # 输出版本号供后续步骤使用
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "version_code=$NEW_VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
           # 在日志中醒目显示版本号
           echo "=============================================="
-          echo "  APK 版本号: ${VERSION_NAME}(${NEW_VERSION_CODE})"
+          echo "  APK 版本号: ${VERSION_NAME} [Code: ${VERSION_CODE}]"
           echo "=============================================="
-          echo "apk_version=${VERSION_NAME}(${NEW_VERSION_CODE})" >> $GITHUB_STEP_SUMMARY
+          echo "apk_version=${VERSION_NAME} [Code: ${VERSION_CODE}]" >> $GITHUB_STEP_SUMMARY
 
       - name: Build Stable Release APKs
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew assembleOnlineStableRelease -PAPP_ID=com.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
+        run: |
+          echo "Building APK with package: com.android.packageinstaller"
+          ./gradlew assembleOnlineStableRelease -PAPP_ID=com.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
-      - name: Find and Rename APK
+          echo "Building APK with package: com.google.android.packageinstaller"
+          ./gradlew assembleOnlineStableRelease -PAPP_ID=com.google.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
+
+      - name: Find and Rename APKs
         id: rename_apk
         run: |
           PROJECT_NAME="InstallerX-Revived"
-          VERSION_TAG="${{ inputs.version_tag }}"
           APK_DIR="app/build/outputs/apk/onlineStable/release/"
 
-          ORIGINAL_APK=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)
+          # 查找所有 APK 文件
+          APKS=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk")
 
-          if [ -z "$ORIGINAL_APK" ]; then
-            echo "ERROR: APK not found in $APK_DIR!"
+          if [ -z "$APKS" ]; then
+            echo "ERROR: No APK found in $APK_DIR!"
             ls -R app/build/outputs/apk
             exit 1
           fi
 
-          NEW_APK_NAME="${PROJECT_NAME}-online-${VERSION_TAG}.apk"
-          NEW_APK_PATH="${APK_DIR}${NEW_APK_NAME}"
+          # 重命名并识别两个包
+          ANDROID_APK=""
+          GOOGLE_APK=""
 
-          echo "Renaming $ORIGINAL_APK -> $NEW_APK_PATH"
-          mv "$ORIGINAL_APK" "$NEW_APK_PATH"
-          echo "online_apk=${NEW_APK_PATH}" >> $GITHUB_OUTPUT
+          for apk in $APKS; do
+            # 使用 aapt 或文件名判断包名（这里假设构建顺序固定）
+            # 第一个构建的是 com.android.packageinstaller
+            # 第二个构建的是 com.google.android.packageinstaller
+
+            if [ -z "$ANDROID_APK" ]; then
+              NEW_NAME="${PROJECT_NAME}-android.apk"
+              NEW_PATH="${APK_DIR}${NEW_NAME}"
+              echo "Renaming $apk -> $NEW_PATH (com.android.packageinstaller)"
+              mv "$apk" "$NEW_PATH"
+              ANDROID_APK="$NEW_PATH"
+            elif [ -z "$GOOGLE_APK" ]; then
+              NEW_NAME="${PROJECT_NAME}-google.apk"
+              NEW_PATH="${APK_DIR}${NEW_NAME}"
+              echo "Renaming $apk -> $NEW_PATH (com.google.android.packageinstaller)"
+              mv "$apk" "$NEW_PATH"
+              GOOGLE_APK="$NEW_PATH"
+            fi
+          done
+
+          echo "android_apk=${ANDROID_APK}" >> $GITHUB_OUTPUT
+          echo "google_apk=${GOOGLE_APK}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -151,7 +177,8 @@ jobs:
           # Explicitly prevent GitHub from auto-generating release notes in the body
           generate_release_notes: false
           files: |
-            app/build/outputs/apk/onlineStable/release/InstallerX-Revived-online-${{ inputs.version_tag }}.apk
+            ${{ steps.rename_apk.outputs.android_apk }}
+            ${{ steps.rename_apk.outputs.google_apk }}
 
       - name: Push Version Code Tag
         run: |
@@ -159,6 +186,7 @@ jobs:
           git push origin "version-code-${{ steps.version.outputs.version_code }}"
 
       - name: Upload to Telegram
+        continue-on-error: true
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
@@ -167,4 +195,5 @@ jobs:
           BOT_CI_SESSION: ${{ secrets.BOT_CI_SESSION }}
         run: |
           pip3 install telethon
-          python3 .github/bot.py "${{ steps.rename_apk.outputs.online_apk }}"
+          echo "Uploading both APKs as a group..."
+          python3 .github/bot.py "${{ steps.rename_apk.outputs.android_apk }}" "${{ steps.rename_apk.outputs.google_apk }}"
