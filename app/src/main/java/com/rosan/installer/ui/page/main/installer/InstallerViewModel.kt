@@ -27,6 +27,7 @@ import com.rosan.installer.domain.engine.usecase.GetAppIconUseCase
 import com.rosan.installer.domain.engine.usecase.GetAppLabelUseCase
 import com.rosan.installer.domain.privileged.usecase.GetAvailableUsersUseCase
 import com.rosan.installer.domain.session.model.ProgressEntity
+import com.rosan.installer.domain.session.model.ConfirmationState
 import com.rosan.installer.domain.session.model.SelectInstallEntity
 import com.rosan.installer.domain.session.repository.InstallerSessionRepository
 import com.rosan.installer.domain.settings.model.config.Authorizer
@@ -179,6 +180,7 @@ class InstallerViewModel(
                 _localState.update { it.copy(navigatedFromPrepareToChoice = uiState.value.stage is InstallerStage.InstallPrepare) }
                 installChoice()
             }
+            is InstallerViewAction.SelectMixedModuleType -> selectMixedModuleType(action.installAsModule)
 
             is InstallerViewAction.InstallPrepare -> installPrepare()
             is InstallerViewAction.InstallExtendedMenu -> installExtendedMenu()
@@ -232,8 +234,19 @@ class InstallerViewModel(
         }
 
         is ProgressEntity.Installing -> {
-            val floatProgress = if (progress.total > 1) progress.current.toFloat() / progress.total.toFloat() else 0f
-            InstallerStage.Installing(floatProgress, progress.current, progress.total, progress.appLabel)
+            val floatProgress = progress.overallProgress()
+                ?: if (progress.total > 1) {
+                    (progress.current - 1).coerceAtLeast(0).toFloat() / progress.total.toFloat()
+                } else {
+                    0f
+                }
+            InstallerStage.Installing(
+                progress = floatProgress,
+                current = progress.current,
+                total = progress.total,
+                appLabel = progress.appLabel,
+                phase = progress.phase
+            )
         }
 
         is ProgressEntity.InstallCompleted -> InstallerStage.InstallCompleted(progress.results)
@@ -342,10 +355,13 @@ class InstallerViewModel(
         collectRepoJob = viewModelScope.launch {
             settingsLoadingJob.join()
 
-            // Core fix: Listen to both progress and uninstallInfo flows simultaneously
-            combine(session.progress, session.uninstallInfo) { progress, uninstallInfo ->
-                Pair(progress, uninstallInfo)
-            }.collect { (progress, uninstallInfo) ->
+            combine(
+                session.progress,
+                session.uninstallInfo,
+                session.confirmationState
+            ) { progress, uninstallInfo, confirmationState ->
+                Triple(progress, uninstallInfo, confirmationState)
+            }.collect { (progress, uninstallInfo, confirmationState) ->
 
                 if (progress is ProgressEntity.InstallResolving || progress is ProgressEntity.InstallPreparing || progress is ProgressEntity.InstallAnalysing) {
                     if (isInstallingModule) {
@@ -452,6 +468,8 @@ class InstallerViewModel(
                     currentState.copy(
                         config = session.config,
                         stage = newStage,
+                        isConfirmationSubmitting =
+                            confirmationState is ConfirmationState.Submitting,
                         currentPackageName = newPackageName,
                         uiUninstallInfo = mergedUninstallInfo,
                         error = session.error
@@ -644,13 +662,15 @@ class InstallerViewModel(
 
                 result.copy(
                     appEntities = clearedEntities,
-                    signatureMatchStatus = clearedEntities.analyzePackageSignatureMatch(
-                        installedInfo = result.installedAppInfo,
-                        hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
-                    ),
-                    signatureAnalysis = clearedEntities.analyzePackageSignatureSelection(
-                        result.installedAppInfo
-                    )
+                    signatureMatchStatus = if (result.signatureCheckPerformed) {
+                        clearedEntities.analyzePackageSignatureMatch(
+                            installedInfo = result.installedAppInfo,
+                            hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
+                        )
+                    } else result.signatureMatchStatus,
+                    signatureAnalysis = if (result.signatureCheckPerformed) {
+                        clearedEntities.analyzePackageSignatureSelection(result.installedAppInfo)
+                    } else result.signatureAnalysis
                 )
             }
             // Sync the updated list back to the underlying session
@@ -665,6 +685,38 @@ class InstallerViewModel(
                 analysisResults = currentResults // Ensure the UI receives the latest list
             )
         }
+    }
+
+    private fun selectMixedModuleType(installAsModule: Boolean) {
+        val currentResults = _localState.value.analysisResults
+        val targetEntity = currentResults
+            .flatMap { it.appEntities }
+            .firstOrNull { entity ->
+                if (installAsModule) entity.app is AppEntity.ModuleEntity
+                else entity.app is AppEntity.BaseEntity
+            } ?: return
+
+        val updatedResults = currentResults.map { result ->
+            val updatedEntities = result.appEntities.map { entity ->
+                entity.copy(selected = entity.app === targetEntity.app)
+            }
+            result.copy(
+                appEntities = updatedEntities,
+                signatureMatchStatus = if (result.signatureCheckPerformed) {
+                    updatedEntities.analyzePackageSignatureMatch(
+                        installedInfo = result.installedAppInfo,
+                        hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
+                    )
+                } else result.signatureMatchStatus,
+                signatureAnalysis = if (result.signatureCheckPerformed) {
+                    updatedEntities.analyzePackageSignatureSelection(result.installedAppInfo)
+                } else result.signatureAnalysis
+            )
+        }
+
+        session.analysisResults = updatedResults.toMutableList()
+        _localState.update { it.copy(analysisResults = updatedResults) }
+        installPrepare()
     }
 
     private fun installPrepare() {
@@ -733,13 +785,15 @@ class InstallerViewModel(
                 updatedEntities.replaceAll { it.copy(selected = false) }
             }
 
-            val newSignatureAnalysis = updatedEntities.analyzePackageSignatureSelection(
-                packageToUpdate.installedAppInfo
-            )
-            val newSignatureMatchStatus = updatedEntities.analyzePackageSignatureMatch(
-                installedInfo = packageToUpdate.installedAppInfo,
-                hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
-            )
+            val newSignatureAnalysis = if (packageToUpdate.signatureCheckPerformed) {
+                updatedEntities.analyzePackageSignatureSelection(packageToUpdate.installedAppInfo)
+            } else packageToUpdate.signatureAnalysis
+            val newSignatureMatchStatus = if (packageToUpdate.signatureCheckPerformed) {
+                updatedEntities.analyzePackageSignatureMatch(
+                    installedInfo = packageToUpdate.installedAppInfo,
+                    hasSigningCertificate = installedPackageSignatureProvider::hasSigningCertificate
+                )
+            } else packageToUpdate.signatureMatchStatus
 
             val newPackageAnalysisResult = packageToUpdate.copy(
                 appEntities = updatedEntities,

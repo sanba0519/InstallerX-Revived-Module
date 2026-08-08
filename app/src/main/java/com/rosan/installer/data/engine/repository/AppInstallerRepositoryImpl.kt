@@ -15,6 +15,8 @@ import com.rosan.installer.data.engine.policy.PlatformInstallPolicyChecker
 import com.rosan.installer.domain.device.provider.DeviceCapabilityProvider
 import com.rosan.installer.domain.engine.model.install.InstallEntity
 import com.rosan.installer.domain.engine.model.install.InstallMetadata
+import com.rosan.installer.domain.engine.model.install.InstallPhase
+import com.rosan.installer.domain.engine.model.install.InstallWriteProgress
 import com.rosan.installer.domain.engine.model.install.shouldAutoDeleteSource
 import com.rosan.installer.domain.engine.model.install.sourcePath
 import com.rosan.installer.domain.engine.repository.AppInstallerRepository
@@ -53,7 +55,9 @@ class AppInstallerRepositoryImpl(
         respectPlatformInstallPolicy: Boolean,
         blacklist: List<String>,
         sharedUserIdBlacklist: List<String>,
-        sharedUserIdExemption: List<String>
+        sharedUserIdExemption: List<String>,
+        onProgress: suspend (InstallWriteProgress) -> Unit,
+        onPhaseChanged: suspend (InstallPhase) -> Unit
     ) = executeWithRepo(config) { repo ->
         persistSelfUpdateSourceDeletion(config, entities, metadata)
 
@@ -93,7 +97,9 @@ class AppInstallerRepositoryImpl(
             effectiveRespectPlatformInstallPolicy,
             blacklist,
             sharedUserIdBlacklist,
-            sharedUserIdExemption
+            sharedUserIdExemption,
+            onProgress,
+            onPhaseChanged
         )
     }
 
@@ -161,7 +167,7 @@ class AppInstallerRepositoryImpl(
         config: ConfigModel,
         sessionId: Int,
         granted: Boolean
-    ) = executeWithRepo(config) { repo ->
+    ) = executeWithRepo(config, resolveSessionApprovalRepo(config)) { repo ->
         repo.approveSession(config, sessionId, granted)
     }
 
@@ -170,10 +176,9 @@ class AppInstallerRepositoryImpl(
      */
     private suspend fun <T> executeWithRepo(
         config: ConfigModel,
+        repo: AppInstallerRepository = resolveRepo(config),
         action: suspend (AppInstallerRepository) -> T
     ): T {
-        val repo = resolveRepo(config)
-
         try {
             return action(repo)
         } catch (e: IllegalStateException) {
@@ -208,6 +213,23 @@ class AppInstallerRepositoryImpl(
         }
     }
 
+    private fun resolveSessionApprovalRepo(config: ConfigModel): AppInstallerRepository {
+        if (!deviceCapabilityProvider.isSystemApp) return resolveRepo(config)
+
+        Timber.tag(TAG).d(
+            "Using the system app Binder path for session approval; configured authorizer=%s",
+            config.authorizer
+        )
+        return createSystemAppRepo()
+    }
+
+    private fun createSystemAppRepo() = SystemAppInstallerRepoImpl(
+        context,
+        reflect,
+        deviceCapabilityProvider,
+        postInstallTaskProvider
+    )
+
     /**
      * Resolve the InstallerRepo based on the provided 
      */
@@ -217,7 +239,7 @@ class AppInstallerRepositoryImpl(
             Authorizer.Dhizuku -> DhizukuAppInstallerRepoImpl(context, reflect, deviceCapabilityProvider, postInstallTaskProvider)
             Authorizer.None -> {
                 if (deviceCapabilityProvider.isSystemApp) {
-                    SystemAppInstallerRepoImpl(context, reflect, deviceCapabilityProvider, postInstallTaskProvider)
+                    createSystemAppRepo()
                 } else {
                     NoneAppInstallerRepoImpl(context, reflect, postInstallTaskProvider)
                 }
