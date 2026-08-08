@@ -66,5 +66,3 @@ if __name__ == '__main__':
             sys.exit(1)
     else:
         print("[-] No file paths provided as arguments.")
-    else:
-        print("[-] No file paths provided as arguments.")
