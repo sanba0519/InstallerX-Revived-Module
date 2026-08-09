@@ -170,7 +170,8 @@ jobs:
           echo "Cloning AOSP module template..."
           git clone --depth 1 --branch AOSP "$REPO_URL" /tmp/module-aosp
           rm -rf /tmp/module-aosp/.git
-          mkdir -p /tmp/module-aosp/system/priv-app/PackageInstaller
+          mkdir -p /tmp/module-aosp/system/priv-app/PackageInstaller/lib
+          mkdir -p /tmp/module-aosp/system/priv-app/PackageInstaller/oat
           cp "$ANDROID_APK" /tmp/module-aosp/system/priv-app/PackageInstaller/
           perl -pi -e "s/^version=.*/version=$MODULE_VERSION_NAME/" /tmp/module-aosp/module.prop
           perl -pi -e "s/^versionCode=.*/versionCode=$MODULE_VERSION_CODE/" /tmp/module-aosp/module.prop
@@ -178,7 +179,8 @@ jobs:
           echo "Cloning google module template..."
           git clone --depth 1 --branch google "$REPO_URL" /tmp/module-google
           rm -rf /tmp/module-google/.git
-          mkdir -p /tmp/module-google/system/priv-app/GooglePackageInstaller
+          mkdir -p /tmp/module-google/system/priv-app/GooglePackageInstaller/lib
+          mkdir -p /tmp/module-google/system/priv-app/GooglePackageInstaller/oat
           cp "$GOOGLE_APK" /tmp/module-google/system/priv-app/GooglePackageInstaller/
           perl -pi -e "s/^version=.*/version=$MODULE_VERSION_NAME/" /tmp/module-google/module.prop
           perl -pi -e "s/^versionCode=.*/versionCode=$MODULE_VERSION_CODE/" /tmp/module-google/module.prop
