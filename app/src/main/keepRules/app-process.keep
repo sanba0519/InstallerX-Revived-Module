@@ -1,3 +1,0 @@
-# Preserve source and line metadata for app_process stack traces.
--keepattributes SourceFile,LineNumberTable
--renamesourcefileattribute SourceFile
