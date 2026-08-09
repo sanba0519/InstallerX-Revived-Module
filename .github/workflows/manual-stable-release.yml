@@ -87,9 +87,9 @@ jobs:
           VERSION_CODE=$(date +%Y%m%d)
           BUILD_DATE=$(date +%Y%m%d)
 
-          # Version name 格式: 用户输入的 tag (日期)
+          # Version name 格式: 固定 tag (日期)
           # 例如: 222222.33 (20260809)
-          VERSION_TAG="${{ inputs.version_tag }}"
+          VERSION_TAG="222222.33"
           VERSION_NAME="${VERSION_TAG} (${BUILD_DATE})"
 
           echo "本次 Version Name: $VERSION_NAME"
@@ -130,12 +130,11 @@ jobs:
       - name: Find and Rename APKs
         id: rename_apk
         run: |
-          PROJECT_NAME="InstallerX-Revived"
           APK_DIR="app/build/outputs/apk/onlineStable/release/"
 
           # 重命名两个 APK
           if [ -f "${APK_DIR}temp-android.apk" ]; then
-            ANDROID_APK="${APK_DIR}${PROJECT_NAME}-android.apk"
+            ANDROID_APK="${APK_DIR}PackageInstaller.apk"
             mv "${APK_DIR}temp-android.apk" "$ANDROID_APK"
             echo "Android APK: $ANDROID_APK"
             echo "android_apk=${ANDROID_APK}" >> $GITHUB_OUTPUT
@@ -145,10 +144,10 @@ jobs:
           fi
 
           # 查找 Google APK（第二次构建的结果）
-          GOOGLE_APK_ORIGINAL=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*android.apk" | head -n 1)
+          GOOGLE_APK_ORIGINAL=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*PackageInstaller.apk" | head -n 1)
 
           if [ -n "$GOOGLE_APK_ORIGINAL" ]; then
-            GOOGLE_APK="${APK_DIR}${PROJECT_NAME}-google.apk"
+            GOOGLE_APK="${APK_DIR}GooglePackageInstaller.apk"
             mv "$GOOGLE_APK_ORIGINAL" "$GOOGLE_APK"
             echo "Google APK: $GOOGLE_APK"
             echo "google_apk=${GOOGLE_APK}" >> $GITHUB_OUTPUT
@@ -157,6 +156,44 @@ jobs:
             ls -lah "$APK_DIR"
             exit 1
           fi
+
+      - name: Build Magisk Modules
+        id: modules
+        run: |
+          set -e
+          MODULE_VERSION_NAME="${{ steps.version.outputs.version_name }}"
+          MODULE_VERSION_CODE="${{ steps.version.outputs.version_code }}"
+          ANDROID_APK="${{ steps.rename_apk.outputs.android_apk }}"
+          GOOGLE_APK="${{ steps.rename_apk.outputs.google_apk }}"
+          REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+
+          echo "Cloning AOSP module template..."
+          git clone --depth 1 --branch AOSP "$REPO_URL" /tmp/module-aosp
+          rm -rf /tmp/module-aosp/.git
+          mkdir -p /tmp/module-aosp/system/priv-app/PackageInstaller
+          cp "$ANDROID_APK" /tmp/module-aosp/system/priv-app/PackageInstaller/
+          perl -pi -e "s/^version=.*/version=$MODULE_VERSION_NAME/" /tmp/module-aosp/module.prop
+          perl -pi -e "s/^versionCode=.*/versionCode=$MODULE_VERSION_CODE/" /tmp/module-aosp/module.prop
+
+          echo "Cloning google module template..."
+          git clone --depth 1 --branch google "$REPO_URL" /tmp/module-google
+          rm -rf /tmp/module-google/.git
+          mkdir -p /tmp/module-google/system/priv-app/GooglePackageInstaller
+          cp "$GOOGLE_APK" /tmp/module-google/system/priv-app/GooglePackageInstaller/
+          perl -pi -e "s/^version=.*/version=$MODULE_VERSION_NAME/" /tmp/module-google/module.prop
+          perl -pi -e "s/^versionCode=.*/versionCode=$MODULE_VERSION_CODE/" /tmp/module-google/module.prop
+
+          echo "Packing AOSP module zip..."
+          cd /tmp/module-aosp
+          zip -r9 /tmp/InstallerX-Revived-AOSP.zip *
+
+          echo "Packing google module zip..."
+          cd /tmp/module-google
+          zip -r9 /tmp/InstallerX-Revived-Google.zip *
+
+          echo "aosp_zip=/tmp/InstallerX-Revived-AOSP.zip" >> $GITHUB_OUTPUT
+          echo "google_zip=/tmp/InstallerX-Revived-Google.zip" >> $GITHUB_OUTPUT
+          ls -lah /tmp/InstallerX-Revived-*.zip
 
       - name: Upload to Telegram
         continue-on-error: true
@@ -168,5 +205,5 @@ jobs:
           BOT_CI_SESSION: ${{ secrets.BOT_CI_SESSION }}
         run: |
           pip3 install telethon
-          echo "Uploading both APKs as a group..."
-          python3 .github/bot.py "${{ steps.rename_apk.outputs.android_apk }}" "${{ steps.rename_apk.outputs.google_apk }}"
+          echo "Uploading APKs and module zips as a group..."
+          python3 .github/bot.py "${{ steps.rename_apk.outputs.android_apk }}" "${{ steps.rename_apk.outputs.google_apk }}" "${{ steps.modules.outputs.aosp_zip }}" "${{ steps.modules.outputs.google_zip }}"
