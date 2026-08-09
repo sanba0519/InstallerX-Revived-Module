@@ -9,6 +9,7 @@ ui_print "- Installing PackageInstaller Replacement..."
 # 0 0 corresponds to root:root
 # 0755 is rwxr-xr-x (required for directories)
 # 0644 is rw-r--r-- (required for system apks)
-
+sleep 0.5
+ui_print "- 此模块版由TG@installerx_revived_module发布"
 ui_print "- Setting permissions..."
 set_perm_recursive "$MODPATH/system" 0 0 0755 0644

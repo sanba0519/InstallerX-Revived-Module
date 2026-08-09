@@ -2,6 +2,6 @@ id=com.android.packageinstaller
 name=InstallerX Revived
 version=26.05.01
 versionCode=54
-author=wxxsfxyzm
+author=wxxsfxyzm & sanba0519
 description=InstallerX as System Package Installer (Google, online)
 actionIcon=launcher.png
