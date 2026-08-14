@@ -118,28 +118,51 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
           echo "Building APK with package: com.android.packageinstaller"
           ./gradlew assembleStableRelease -PAPP_ID=com.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
+          # 定位 Stable 变体的 APK 输出目录
+          APK_DIR=$(find app/build/outputs/apk -type d | grep -iE '/stable/release$' | head -n 1)
+          if [ -z "$APK_DIR" ]; then
+            echo "ERROR: Stable APK output directory not found"
+            find app/build/outputs/apk -type d
+            exit 1
+          fi
+          echo "APK output directory: $APK_DIR"
+
           # 备份第一个 APK (保存到 build 目录之外以避免被 clean 删除)
           mkdir -p /tmp/apk-backup
-          cp app/build/outputs/apk/stable/release/*.apk /tmp/apk-backup/android.apk
+          ORIGINAL_APK=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" | head -n 1)
+          if [ -z "$ORIGINAL_APK" ]; then
+            echo "ERROR: AOSP APK not found in $APK_DIR"
+            ls -lah "$APK_DIR"
+            exit 1
+          fi
+          cp "$ORIGINAL_APK" /tmp/apk-backup/android.apk
 
           echo "Building APK with package: com.google.android.packageinstaller"
           ./gradlew clean assembleStableRelease -PAPP_ID=com.google.android.packageinstaller -Porg.gradle.java.installations.auto-download=false
 
-          # 恢复第一个 APK
-          cp /tmp/apk-backup/android.apk app/build/outputs/apk/stable/release/temp-android.apk
+          # 重新定位输出目录并恢复第一个 APK
+          APK_DIR=$(find app/build/outputs/apk -type d | grep -iE '/stable/release$' | head -n 1)
+          cp /tmp/apk-backup/android.apk "$APK_DIR/temp-android.apk"
 
       - name: Find and Rename APKs
         id: rename_apk
         run: |
-          APK_DIR="app/build/outputs/apk/stable/release/"
+          set -e
+          APK_DIR=$(find app/build/outputs/apk -type d | grep -iE '/stable/release$' | head -n 1)
+          if [ -z "$APK_DIR" ]; then
+            echo "ERROR: Stable APK output directory not found"
+            find app/build/outputs/apk -type d
+            exit 1
+          fi
 
           # 重命名两个 APK
-          if [ -f "${APK_DIR}temp-android.apk" ]; then
-            ANDROID_APK="${APK_DIR}PackageInstaller.apk"
-            mv "${APK_DIR}temp-android.apk" "$ANDROID_APK"
+          if [ -f "${APK_DIR}/temp-android.apk" ]; then
+            ANDROID_APK="${APK_DIR}/PackageInstaller.apk"
+            mv "${APK_DIR}/temp-android.apk" "$ANDROID_APK"
             echo "Android APK: $ANDROID_APK"
             echo "android_apk=${ANDROID_APK}" >> $GITHUB_OUTPUT
           else
@@ -148,10 +171,10 @@ jobs:
           fi
 
           # 查找 Google APK（第二次构建的结果）
-          GOOGLE_APK_ORIGINAL=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*PackageInstaller.apk" | head -n 1)
+          GOOGLE_APK_ORIGINAL=$(find "$APK_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "PackageInstaller.apk" | head -n 1)
 
           if [ -n "$GOOGLE_APK_ORIGINAL" ]; then
-            GOOGLE_APK="${APK_DIR}GooglePackageInstaller.apk"
+            GOOGLE_APK="${APK_DIR}/GooglePackageInstaller.apk"
             mv "$GOOGLE_APK_ORIGINAL" "$GOOGLE_APK"
             echo "Google APK: $GOOGLE_APK"
             echo "google_apk=${GOOGLE_APK}" >> $GITHUB_OUTPUT
