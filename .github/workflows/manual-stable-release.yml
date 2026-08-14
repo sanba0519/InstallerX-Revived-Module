@@ -27,6 +27,13 @@ jobs:
 
       - name: Merge upstream
         if: ${{ inputs.merge_upstream }}
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          BOT_CI_SESSION: ${{ secrets.BOT_CI_SESSION }}
+          MY_CHAT_ID: ${{ secrets.MY_CHAT_ID }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -36,6 +43,9 @@ jobs:
           if ! git merge upstream/main --no-edit; then
             echo "❌ Merge conflict detected! Please resolve conflicts locally and try again."
             git merge --abort
+            # 通知维护者合并冲突
+            pip3 install telethon >/dev/null 2>&1 || true
+            python3 .github/bot.py --text "❌ InstallerX-Revived-Module 合并上游冲突，请手动处理！" --to "${MY_CHAT_ID}" || echo "Failed to send Telegram notification"
             exit 1
           fi
           echo "✅ Successfully merged upstream/main"
