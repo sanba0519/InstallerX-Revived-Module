@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Merge upstream
-        if: ${{ inputs.merge_upstream }}
+        if: ${{ github.event_name == 'schedule' || inputs.merge_upstream }}
         env:
           API_ID: ${{ secrets.API_ID }}
           API_HASH: ${{ secrets.API_HASH }}
