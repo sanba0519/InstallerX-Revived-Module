@@ -646,8 +646,8 @@
     <string name="working_status_none_authorizer_desc">Jangan gunakan hak istimewa apa pun, izin Sumber Tidak Dikenal diperlukan untuk menginstal aplikasi</string>
     <string name="working_status_not_default_installer_click_details">Klik untuk melihat detail</string>
     <string name="working_status_default_installer_tip">Tetapkan aplikasi ini sebagai penginstal paket default untuk mengambil alih sebagian besar permintaan instalasi. Perlu diperhatikan bahwa kasus berikut tidak dapat dicegat:\n- OEM membatasi modifikasi penginstal default\n- Inisiator menentukan Komponen target\n- Inisiator menggunakan Session Install</string>
-    <string name="setting_lsposed_module_title">Modul Vector Diaktifkan</string>
-    <string name="setting_lsposed_module_desc">Aktifkan ini jika Anda telah memaksa pengambilalihan penginstal default melalui modul Vector pihak ketiga. Ini akan menonaktifkan pemeriksaan status internal, dan halaman beranda akan selalu ditampilkan sebagai Diaktifkan</string>
+    <string name="setting_lsposed_module_title">Modul LSPosed Diaktifkan</string>
+    <string name="setting_lsposed_module_desc">Aktifkan ini jika Anda telah memaksa pengambilalihan penginstal default melalui modul LSPosed pihak ketiga. Ini akan menonaktifkan pemeriksaan status internal, dan halaman beranda akan selalu ditampilkan sebagai Diaktifkan</string>
     <string name="home_stat_authorizers">Hak Istimewa yang Tersedia</string>
     <string name="home_stat_profiles">Profil</string>
     <string name="home_label_lsp_link">Mencari modul?</string>
@@ -950,4 +950,20 @@
     <string name="expand_temporary_settings_by_default">Perpanjang panel secara default</string>
     <string name="expand_temporary_settings_by_default_desc">Perpanjang pengaturan sementara disaat dialog instalasi terbuka</string>
     <string name="config_allow_sig_unknown_http_lightweight_desc">Selama analisis HTTP ringan, setiap tanda tangan anomali dievaluasi sesuai dengan pengaturan ini.</string>
+    <string name="history_recording">Riwayat rekaman</string>
+    <string name="history_enable">Aktifkan riwayat</string>
+    <string name="history_show_indicators">Tampilkan indikator</string>
+    <string name="history_disabled_title">Riwayat dinonaktifkan</string>
+    <string name="history_disabled_desc">Operasi instalasi dan penghapusan instalasi baru tidak akan direkam.</string>
+    <string name="history_disable_confirm_title">Nonaktifkan riwayat?</string>
+    <string name="history_disable_confirm_desc">Apakah Anda ingin menghapus riwayat yang sudah tercatat? Operasi baru tidak akan tercatat selama riwayat dinonaktifkan.</string>
+    <string name="history_disable_and_clear">Bersihkan dan Nonaktifkan</string>
+    <string name="history_disable_and_keep">Pertahankan dan nonaktifkan</string>
+    <string name="history_version_self_update">Pembaruan mandiri</string>
+    <string name="advanced">Lanjutan</string>
+    <string name="backup_settings_validation_duplicate_unknown_scope">Duplikat Cakupan tidak diketahui.</string>
+    <string name="config_scope_unknown">Tidak diketahui</string>
+    <string name="config_scope_apps">Aplikasi</string>
+    <string name="config_scope_unknown_group">Lingkup tidak diketahui</string>
+    <string name="sort_by_show_unknown_scope">Tampilkan Lingkup tidak diketahui</string>
 </resources>

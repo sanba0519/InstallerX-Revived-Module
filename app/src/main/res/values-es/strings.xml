@@ -437,7 +437,7 @@
     <string name="auto_background_install_desc">Instalación automática silenciosa al iniciar el cuadro de diálogo de instalación</string>
     <string name="installer_oppo_related">Relacionado con OPPO</string>
     <string name="installer_show_oem_special">Mostrar información adicional del OEM</string>
-    <string name="installer_show_oem_special_desc">Analizar y mostrar algún valor específico para los APKs OEM en el cuadro de diálogo de instalación</string>
+    <string name="installer_show_oem_special_desc">Mostrar la información del APK del fabricante (OEM) en el diálogo de instalación. Si un APK requiere una versión del SDK de Oplus OS más reciente que la disponible en este dispositivo, mostrar un error y desactivar la instalación.</string>
     <string name="config_request_update_ownership">Solicitar actualización de propiedad</string>
     <string name="config_request_update_ownership_desc">Establecer este instalador como fuente para futuras actualizaciones</string>
     <string name="installer_select_multi_apk">Instalación en lotes</string>
@@ -736,8 +736,8 @@
     <string name="working_status_none_authorizer_desc">No hagas uso de ningún privilegio, se requiere el permiso de Fuentes desconocidas para instalar aplicaciones</string>
     <string name="working_status_not_default_installer_click_details">Haz clic para ver los detalles</string>
     <string name="working_status_default_installer_tip">Configura esta aplicación como instalador de paquetes por defecto para que se encargue de la mayoría de las solicitudes de instalación. Tenga en cuenta que los siguientes casos no pueden ser interceptados:\n- OEM restringe la modificación del instalador por defecto\n- El iniciador especifica un componente objetivo\n- El iniciador utiliza una instalación de sesión</string>
-    <string name="setting_lsposed_module_title">Módulo Vector habilitado</string>
-    <string name="setting_lsposed_module_desc">Activa esto si has forzado la toma de control por defecto del instalador mediante un módulo Vector de terceros. Esto desactiva la comprobación interna de estado y la página principal mostrará constantemente como Activado</string>
+    <string name="setting_lsposed_module_title">Módulo LSPosed habilitado</string>
+    <string name="setting_lsposed_module_desc">Activa esto si has forzado la toma de control por defecto del instalador mediante un módulo LSPosed de terceros. Esto desactiva la comprobación interna de estado y la página principal mostrará constantemente como Activado</string>
     <string name="home_stat_authorizers">Privilegios disponibles</string>
     <string name="home_stat_profiles">Perfiles</string>
     <string name="home_label_lsp_link">¿Buscas un módulo?</string>
@@ -960,4 +960,21 @@
     <string name="exception_analyse_failed_streaming_source_unsupported">Esta fuente no puede analizarse en el modo de almacenamiento reducido. Elige Inteligente o Descarga completa.</string>
     <string name="exception_analyse_failed_source_materialization">No se pudo descargar la fuente completa para el análisis</string>
     <string name="config_allow_sig_unknown_http_lightweight_desc">Durante el análisis ligero por HTTP, cualquier anomalía de firma se evalúa según este ajuste.</string>
+    <string name="history_recording">Registro del historial</string>
+    <string name="history_enable">Activar el historial</string>
+    <string name="history_show_indicators">Mostrar indicadores</string>
+    <string name="history_disabled_title">El historial está desactivado</string>
+    <string name="history_disabled_desc">Las nuevas operaciones de instalación y desinstalación no se registrarán.</string>
+    <string name="history_disable_confirm_title">¿Desactivar el historial?</string>
+    <string name="history_disable_confirm_desc">¿Desea borrar el historial ya registrado? Las nuevas operaciones no se registrarán mientras el historial esté desactivado.</string>
+    <string name="history_disable_and_clear">Borrar y desactivar</string>
+    <string name="history_disable_and_keep">Conservar y desactivar</string>
+    <string name="history_version_self_update">Actualización automática</string>
+    <string name="config_scope_unknown">Desconocido</string>
+    <string name="config_scope_apps">Aplicaciones</string>
+    <string name="sort_by_show_unknown_scope">Mostrar ámbito desconocido</string>
+    <string name="config_scope_unknown_group">Ámbito desconocido</string>
+    <string name="backup_settings_validation_duplicate_unknown_scope">Ámbito desconocido duplicado.</string>
+    <string name="advanced">Avanzado</string>
+    <string name="installer_prepare_oplus_osdk_incompatible">La versión del SDK de Oplus OS del dispositivo (%1$s) es inferior a la que requiere la aplicación (%2$s); la instalación no está disponible</string>
 </resources>

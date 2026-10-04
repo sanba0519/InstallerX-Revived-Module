@@ -26,8 +26,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -159,16 +159,16 @@ private fun HistoryPageContent(
                             expanded = showHistoryMenu,
                             onDismissRequest = { showHistoryMenu = false },
                             groupSizes = listOf(1, 1),
-                        ) { groupIndex, _, shape ->
+                        ) { groupIndex, _, shape, dismissItem ->
                             val checked = if (groupIndex == 0) {
                                 state.isHistoryEnabled
                             } else {
                                 state.areIndicatorsEnabled
                             }
-                            DropdownMenuItem(
+                            CheckableDropdownMenuItem(
                                 checked = checked,
                                 onCheckedChange = { enabled ->
-                                    showHistoryMenu = false
+                                    dismissItem()
                                     if (groupIndex == 0) {
                                         if (enabled) {
                                             onAction(HistoryViewAction.SetHistoryEnabled(enabled = true))

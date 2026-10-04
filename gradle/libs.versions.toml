@@ -8,41 +8,41 @@
 # https://mvnrepository.com/
 
 [versions]
-agp = "9.3.2"
-apksig = "9.3.2"
+agp = "9.4.1"
 biometric = "1.4.0-alpha07"
 focusApi = "1.4"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 kotlinxCoroutines = "1.11.0"
-ksp = "2.3.11"
-composeBom = "2026.08.00"
-compose = "1.12.0"
+ksp = "2.3.12"
+composeBom = "2026.09.00"
+compose = "1.12.1"
 splashScreen = "1.2.0"
-material3 = "1.5.0-alpha26"
-room = "3.0.1"
+material3 = "1.5.0-alpha29"
+room = "3.0.3"
 ktx-serialization = "1.11.0"
 rikka-shizuku = "13.1.5"
 koin-bom = "4.2.2"
 datastore = "1.2.1"
-aboutLibraries = "15.1.1"
+aboutLibraries = "15.2.0"
 appiconloader = "1.5.0"
-androidx-annotation = "1.10.0"
+androidx-annotation = "1.11.0"
 timber = "5.0.1"
-miuix = "0.9.4-103b737b-SNAPSHOT"
+miuix = "0.9.4"
 okhttp = "5.5.0"
 monetcompat = "0.4.1"
-materialKolor = "5.0.0"
+materialKolor = "5.0.1"
 lifecycle = "2.11.0"
 junit = "1.3.0"
 espressoCore = "3.7.0"
 uiautomator = "2.4.0"
-benchmarkMacroJunit4 = "1.4.1"
-baselineprofile = "1.5.0-rc01"
+benchmarkMacroJunit4 = "1.5.0"
+baselineprofile = "1.5.0"
 profileinstaller = "1.4.1"
 commonsCompress = "1.28.0"
-spotless = "8.10.0"
+xz = "1.12"
+spotless = "8.10.3"
 ktlint = "1.8.0"
-composeKtlintRules = "0.6.4"
+composeKtlintRules = "0.6.7"
 
 [plugins]
 installerx-application = { id = "installerx.android.application" }
@@ -62,7 +62,6 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprof
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
-android-tools-apksig = { module = "com.android.tools.build:apksig", version.ref = "apksig" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 spotless-plugin-gradle = { module = "com.diffplug.spotless:spotless-plugin-gradle", version.ref = "spotless" }
 ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
@@ -71,7 +70,7 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidx-annotation" }
-androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.19.0" }
+androidx-core = { group = "androidx.core", name = "core-ktx", version = "1.19.1" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version = "1.13.0" }
 androidx-lifecycle = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
@@ -101,6 +100,7 @@ ktx-serializationJson = { group = "org.jetbrains.kotlinx", name = "kotlinx-seria
 hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version = "6.1" }
 commons-cli = { group = "commons-cli", name = "commons-cli", version = "1.11.0" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
+xz = { module = "org.tukaani:xz", version.ref = "xz" }
 
 # Koin Inject
 # https://insert-koin.io/docs/setup/koin

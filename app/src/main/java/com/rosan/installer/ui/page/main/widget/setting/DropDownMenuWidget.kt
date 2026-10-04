@@ -3,8 +3,8 @@
 package com.rosan.installer.ui.page.main.widget.setting
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,13 +45,13 @@ fun DropDownMenuWidget(
                     expanded = expanded,
                     onDismissRequest = { expanded = false },
                     groupSizes = listOf(data.size),
-                ) { _, index, shape ->
+                ) { _, index, shape, dismissItem ->
                     val isSelected = index == choice
-                    DropdownMenuItem(
+                    SelectableDropdownMenuItem(
                         selected = isSelected,
                         onClick = {
                             onChoiceChange(index)
-                            expanded = false
+                            dismissItem()
                         },
                         text = { Text(text = data[index]) },
                         shapes = shape,
