@@ -171,6 +171,8 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
     val tagSignatureMatch = stringResource(R.string.tag_signature_match)
     val tagSignatureRotation = stringResource(R.string.tag_signature_rotation)
     val tagSignatureRotationUnconfirmed = stringResource(R.string.tag_signature_rotation_unconfirmed)
+    val tagAospSignature = stringResource(R.string.tag_aosp_signature)
+    val textAospSignature = stringResource(R.string.installer_prepare_aosp_signature)
     val sigNewInstall = stringResource(R.string.installer_prepare_signature_new_install)
     val sigMatch = stringResource(R.string.installer_prepare_signature_match)
     val sigRotationCompatible = stringResource(R.string.installer_prepare_signature_rotation_compatible)
@@ -197,6 +199,18 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
     val labelSignatureLineageCertificate = stringResource(R.string.installer_signature_lineage_certificate)
     val labelSignatureCurrentMarker = stringResource(R.string.installer_signature_current_marker)
     val labelSignatureSha256 = stringResource(R.string.installer_signature_sha256)
+    val labelSignatureSourceStampSha256 = stringResource(R.string.installer_signature_source_stamp_sha256)
+    val labelSignatureSourceStamp = stringResource(R.string.installer_signature_source_stamp)
+    val labelSignatureSourceStampStatus = stringResource(R.string.installer_signature_source_stamp_status)
+    val textSourceStampUnverified = stringResource(R.string.installer_signature_source_stamp_unverified)
+    val textSourceStampVerified = stringResource(R.string.installer_signature_source_stamp_verified)
+    val textSourceStampFailed = stringResource(R.string.installer_signature_source_stamp_failed)
+    val textSourceStampCertificateMismatch = stringResource(R.string.installer_signature_source_stamp_certificate_mismatch)
+    val textSourceStampVerificationError = stringResource(R.string.installer_signature_source_stamp_verification_error)
+    val labelSignatureSourceStampTimestamp = stringResource(R.string.installer_signature_source_stamp_timestamp)
+    val labelSignatureSourceStampCertificate = stringResource(R.string.installer_signature_source_stamp_certificate)
+    val labelSignatureSourceStampLineage = stringResource(R.string.installer_signature_source_stamp_lineage)
+    val labelSignatureInformation = stringResource(R.string.installer_signature_information)
     val labelSignatureSha1 = stringResource(R.string.installer_signature_sha1)
     val labelSignatureSubject = stringResource(R.string.installer_signature_subject)
     val labelSignatureIssuer = stringResource(R.string.installer_signature_issuer)
@@ -221,7 +235,10 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
     val labelXposedMinApi = stringResource(R.string.installer_xposed_min_api)
     val labelXposedTargetApi = stringResource(R.string.installer_xposed_target_api)
 
-    val installResources = remember(primaryColor, errorColor, tertiaryColor) {
+    val labelSignatureHybridClassical = stringResource(R.string.installer_signature_hybrid_classical)
+    val labelSignatureHybridPqc = stringResource(R.string.installer_signature_hybrid_pqc)
+
+    val installResources = remember(primaryColor, errorColor, tertiaryColor, tagAospSignature, textAospSignature) {
         InstallNoticeResources(
             tagDowngrade = tagDowngrade,
             textDowngrade = downgradeWarning,
@@ -229,6 +246,8 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
             tagSignatureMatch = tagSignatureMatch,
             tagSignatureRotation = tagSignatureRotation,
             tagSignatureRotationUnconfirmed = tagSignatureRotationUnconfirmed,
+            tagAospSignature = tagAospSignature,
+            textAospSignature = textAospSignature,
             textSigNewInstall = sigNewInstall,
             textSigMatch = sigMatch,
             textSigRotationCompatible = sigRotationCompatible,
@@ -252,7 +271,21 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
             labelSignatureCertificateLineage = labelSignatureCertificateLineage,
             labelSignatureLineageCertificate = labelSignatureLineageCertificate,
             labelSignatureCurrentMarker = labelSignatureCurrentMarker,
+            labelSignatureHybridClassical = labelSignatureHybridClassical,
+            labelSignatureHybridPqc = labelSignatureHybridPqc,
             labelSignatureSha256 = labelSignatureSha256,
+            labelSignatureSourceStampSha256 = labelSignatureSourceStampSha256,
+            labelSignatureSourceStamp = labelSignatureSourceStamp,
+            labelSignatureSourceStampStatus = labelSignatureSourceStampStatus,
+            textSourceStampUnverified = textSourceStampUnverified,
+            textSourceStampVerified = textSourceStampVerified,
+            textSourceStampFailed = textSourceStampFailed,
+            textSourceStampCertificateMismatch = textSourceStampCertificateMismatch,
+            textSourceStampVerificationError = textSourceStampVerificationError,
+            labelSignatureSourceStampTimestamp = labelSignatureSourceStampTimestamp,
+            labelSignatureSourceStampCertificate = labelSignatureSourceStampCertificate,
+            labelSignatureSourceStampLineage = labelSignatureSourceStampLineage,
+            labelSignatureInformation = labelSignatureInformation,
             labelSignatureSha1 = labelSignatureSha1,
             labelSignatureSubject = labelSignatureSubject,
             labelSignatureIssuer = labelSignatureIssuer,
@@ -481,14 +514,17 @@ fun installPrepareDialog(viewModel: InstallerViewModel): DialogParams {
                         DialogButton(
                             text = stringResource(buttonTextId),
                             weight = 1f,
-                            onLongClick = {
-                                if (!settings.longClickBackgroundInstall) return@DialogButton
-                                // Trigger install directly
-                                viewModel.dispatch(InstallerViewAction.Install(true))
-                                // Force background auto silent install regardless of settings
-                                if (!viewModel.isInstallingModule) {
-                                    viewModel.dispatch(InstallerViewAction.Background)
+                            onLongClick = if (settings.longClickBackgroundInstall) {
+                                {
+                                    // Trigger install directly
+                                    viewModel.dispatch(InstallerViewAction.Install(true))
+                                    // Force background auto silent install regardless of settings
+                                    if (!viewModel.isInstallingModule) {
+                                        viewModel.dispatch(InstallerViewAction.Background)
+                                    }
                                 }
+                            } else {
+                                null
                             },
                             onClick = {
                                 viewModel.dispatch(InstallerViewAction.Install(true))

@@ -534,7 +534,6 @@ class InstallerSelectionTest {
                 check(name == "isSystemApp")
                 true
             },
-            installedPackageSignatureProvider = stub(),
         )
 
         fun load(results: List<PackageAnalysisResult>) {
@@ -585,7 +584,7 @@ class InstallerSelectionTest {
             sdkCompareInMultiLine = false,
             showOPPOSpecial = false,
             checkAppSignature = false,
-            checkSplitPackageSignatures = false,
+            checkSourceStamp = true,
             showSignatureInfoOnMatch = false,
             showSignatureDetails = false,
             installerRequireBiometricAuth = com.rosan.installer.domain.settings.model.config.BiometricAuthMode.entries.first(),
@@ -612,6 +611,8 @@ class InstallerSelectionTest {
             uninstallFlags = 0,
             networkSourceMode = com.rosan.installer.domain.settings.model.config.NetworkSourceMode.entries.first(),
             networkSourceModeWarningAcknowledged = false,
+            networkLoadAppIcon = false,
+            networkAppNameSource = com.rosan.installer.domain.settings.model.preferences.NetworkAppNameSource.ServerFilename,
             allowInternetAccess = false,
             githubUpdateChannel = com.rosan.installer.domain.settings.model.preferences.GithubUpdateChannel.entries.first(),
             customGithubProxyUrl = "",
@@ -626,8 +627,12 @@ class InstallerSelectionTest {
             labShowInstallInitiator = false,
             labInstallWithoutUserAction = false,
             labRespectPlatformInstallPolicy = false,
+            labShizukuNonAdbInstall = false,
+            labEnableAbiOverride = false,
+            labTryDifferentArchitecture = false,
             enableFileLogging = false,
             themeMode = com.rosan.installer.domain.settings.model.preferences.theme.ThemeMode.entries.first(),
+            useAmoled = false,
             paletteStyle = com.rosan.installer.domain.settings.model.preferences.theme.PaletteStyle.entries.first(),
             colorSpec = com.rosan.installer.domain.settings.model.preferences.theme.ThemeColorSpec.entries.first(),
             useDynamicColor = false,

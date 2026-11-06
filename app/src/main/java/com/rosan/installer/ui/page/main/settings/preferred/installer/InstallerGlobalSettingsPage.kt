@@ -203,14 +203,12 @@ fun InstallerGlobalSettingsPage(useBlur: Boolean, viewModel: InstallerSettingsVi
 
                     item(animatedVisibility = uiState.checkAppSignature) {
                         SwitchWidget(
-                            icon = AppIcons.InstallAllowSigMismatch,
-                            title = stringResource(R.string.config_check_split_package_signatures),
-                            description = stringResource(R.string.config_check_split_package_signatures_desc),
-                            checked = uiState.checkSplitPackageSignatures,
+                            icon = AppIcons.Info,
+                            title = stringResource(R.string.config_check_source_stamp),
+                            description = stringResource(R.string.config_check_source_stamp_desc),
+                            checked = uiState.checkSourceStamp,
                             onCheckedChange = {
-                                viewModel.dispatch(
-                                    InstallerSettingsAction.ChangeCheckSplitPackageSignatures(it),
-                                )
+                                viewModel.dispatch(InstallerSettingsAction.ChangeCheckSourceStamp(it))
                             },
                         )
                     }

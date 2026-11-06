@@ -15,7 +15,7 @@ data class InstallerSettingsState(
     val installerRequireBiometricAuth: BiometricAuthMode = BiometricAuthMode.FollowConfig,
     val showOPPOSpecial: Boolean = false,
     val checkAppSignature: Boolean = true,
-    val checkSplitPackageSignatures: Boolean = false,
+    val checkSourceStamp: Boolean = true,
     val showSignatureInfoOnMatch: Boolean = false,
     val showSignatureDetails: Boolean = false,
     val detectXposedModule: Boolean = true,

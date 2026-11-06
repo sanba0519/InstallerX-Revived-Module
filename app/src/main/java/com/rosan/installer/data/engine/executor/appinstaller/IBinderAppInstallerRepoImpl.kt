@@ -23,6 +23,7 @@ import com.rosan.installer.BuildConfig
 import com.rosan.installer.core.bitmask.addFlag
 import com.rosan.installer.core.bitmask.removeFlag
 import com.rosan.installer.core.device.model.Architecture
+import com.rosan.installer.core.env.DeviceConfig
 import com.rosan.installer.core.reflection.ReflectionProvider
 import com.rosan.installer.core.reflection.getValue
 import com.rosan.installer.data.engine.executor.PackageInstallerUtil.abiOverride
@@ -45,10 +46,13 @@ import com.rosan.installer.domain.privileged.provider.PostInstallTaskProvider
 import com.rosan.installer.domain.settings.model.config.Authorizer
 import com.rosan.installer.domain.settings.model.config.ConfigModel
 import com.rosan.installer.domain.settings.model.config.InstallerMode
+import com.rosan.installer.domain.settings.repository.AppSettingsRepository
+import com.rosan.installer.domain.settings.repository.BooleanSetting
 import com.rosan.installer.framework.privileged.core.execution.authorization.requireDhizukuPermissionGranted
 import com.rosan.installer.util.pm.isFreshInstallCandidate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -57,6 +61,7 @@ abstract class IBinderAppInstallerRepoImpl(
     protected val reflect: ReflectionProvider,
     protected val capabilityProvider: DeviceCapabilityProvider,
     protected val postInstallTaskProvider: PostInstallTaskProvider,
+    private val appSettingsRepo: AppSettingsRepository,
 ) : AppInstallerRepository {
     private companion object {
         const val INSTALL_FLAGS_TAG = "InstallFlags"
@@ -66,7 +71,7 @@ abstract class IBinderAppInstallerRepoImpl(
 
     protected abstract suspend fun iBinderWrapper(iBinder: IBinder): IBinder
 
-    private suspend fun resolvePackageInstallerBinder(): IPackageInstaller {
+    protected suspend fun resolvePackageInstallerBinder(): IPackageInstaller {
         val packageManager =
             IPackageManager.Stub.asInterface(iBinderWrapper(ServiceManager.getService("package")))
         return IPackageInstaller.Stub.asInterface(iBinderWrapper(packageManager.packageInstaller.asBinder()))
@@ -90,7 +95,7 @@ abstract class IBinderAppInstallerRepoImpl(
         InstallerMode.Custom -> installer ?: BuildConfig.APPLICATION_ID
     }
 
-    private suspend fun getPackageInstaller(config: ConfigModel): PackageInstaller {
+    protected open suspend fun getPackageInstaller(config: ConfigModel): PackageInstaller {
         val packageInstaller = resolvePackageInstallerBinder()
 
         // Resolve the target user ID based on config
@@ -126,7 +131,7 @@ abstract class IBinderAppInstallerRepoImpl(
         Dhizuku.getOwnerPackageName()
     }
 
-    private suspend fun setSessionIBinder(session: Session) {
+    protected open suspend fun setSessionIBinder(session: Session) {
         val iPackageInstallerSession = reflect.getValue<IInterface>(session, "mSession") ?: return
         val iBinder = iPackageInstallerSession.asBinder()
         reflect.setFieldValue(
@@ -169,6 +174,9 @@ abstract class IBinderAppInstallerRepoImpl(
         onProgress: suspend (InstallWriteProgress) -> Unit,
         onPhaseChanged: suspend (InstallPhase) -> Unit,
     ) {
+        val enableAbiOverride = appSettingsRepo.getBoolean(BooleanSetting.LabEnableAbiOverride).first()
+        val tryDifferentArchitecture = enableAbiOverride &&
+            appSettingsRepo.getBoolean(BooleanSetting.LabTryDifferentArchitecture).first()
         onPhaseChanged(InstallPhase.WRITING)
         val totalBytes = InstallProgressWriter.totalBytesOrNull(entities.map { it.data.getSize() })
         val progressWriter = totalBytes?.let {
@@ -182,6 +190,8 @@ abstract class IBinderAppInstallerRepoImpl(
                     entities,
                     metadata,
                     respectPlatformInstallPolicy,
+                    enableAbiOverride,
+                    tryDifferentArchitecture,
                     packageName,
                     blacklist,
                     sharedUserIdBlacklist,
@@ -234,6 +244,8 @@ abstract class IBinderAppInstallerRepoImpl(
         entities: List<InstallEntity>,
         metadata: InstallMetadata,
         respectPlatformInstallPolicy: Boolean,
+        enableAbiOverride: Boolean,
+        tryDifferentArchitecture: Boolean,
         packageName: String,
         managedBlacklistPackages: List<String>,
         sharedUserIdBlacklist: List<String>,
@@ -276,6 +288,8 @@ abstract class IBinderAppInstallerRepoImpl(
                 entities,
                 metadata,
                 respectPlatformInstallPolicy,
+                enableAbiOverride,
+                tryDifferentArchitecture,
                 packageInstaller,
                 packageName,
             )
@@ -284,7 +298,7 @@ abstract class IBinderAppInstallerRepoImpl(
             metadata.onPlatformSessionActiveChanged(createdSession.first, true)
             installIts(entities, session, progressWriter)
             onPhaseChanged(InstallPhase.INSTALLING)
-            commit(session)
+            commit(config, createdSession.first, session)
         } catch (e: Exception) {
             session?.abandon()
             throw e
@@ -301,6 +315,8 @@ abstract class IBinderAppInstallerRepoImpl(
         entities: List<InstallEntity>,
         metadata: InstallMetadata,
         respectPlatformInstallPolicy: Boolean,
+        enableAbiOverride: Boolean,
+        tryDifferentArchitecture: Boolean,
         packageInstaller: PackageInstaller,
         packageName: String,
     ): Pair<Int, Session> {
@@ -357,32 +373,24 @@ abstract class IBinderAppInstallerRepoImpl(
         // Android System will ignore INSTALL_ALLOW_DOWNGRADE for None ROOT/SYSTEM on Android 15+, no need to disable it here
 
         // --- Set abiOverride ---
-        // Get the architecture of the base APK.
-        // With the updated ApkParser logic, this accurately reflects the actual native libraries in the APK.
+        // Leave ABI selection to Android by default. The main lab opt-in allows overrides
+        // within the device's architecture family; the sub-option restores cross-family attempts.
         val baseApkArch = entities.firstOrNull { it.name == "base.apk" }?.arch
         Timber.d("Current Arch to install: $baseApkArch")
-
-        // Only set abiOverride if the APK actually contains native libraries.
-        // Pure Java/Kotlin apps (Architecture.NONE) should be left to the system to decide.
-        if ((sourceType == DataType.APK || sourceType == DataType.MULTI_APK || sourceType == DataType.MULTI_APK_ZIP) &&
-            baseApkArch != null &&
-            baseApkArch != Architecture.NONE
-        ) {
-            val abiToOverride = if (baseApkArch != Architecture.UNKNOWN) {
-                // Trust the parser result.
-                // Even for mismatched architectures (e.g., x86 on ARM), passing the actual arch string (e.g., "x86")
-                // allows the system to attempt binary translation (like Houdini) if available.
-                baseApkArch.arch
-            } else {
-                // Fallback for extremely rare cases where arch cannot be identified but native libs exist.
-                "armeabi-v7a"
-            }
-
+        val abiToOverride = resolveSessionAbiOverride(
+            sourceType = sourceType,
+            baseArchitecture = baseApkArch,
+            deviceArchitecture = DeviceConfig.currentArchitecture,
+            enableAbiOverride = enableAbiOverride,
+            tryDifferentArchitecture = tryDifferentArchitecture,
+        )
+        if (abiToOverride != null) {
             Timber.d("Setting abiOverride to $abiToOverride")
             params.abiOverride = abiToOverride
         }
         // --- abiOverride End ---
 
+        prepareSessionCreation(config, params, respectPlatformInstallPolicy)
         val sessionId = packageInstaller.createSession(params)
         val session = packageInstaller.openSession(sessionId)
         setSessionIBinder(session)
@@ -456,8 +464,14 @@ abstract class IBinderAppInstallerRepoImpl(
         false
     }
 
+    protected open suspend fun prepareSessionCreation(
+        config: ConfigModel,
+        params: PackageInstaller.SessionParams,
+        respectPlatformInstallPolicy: Boolean,
+    ) = Unit
+
     @SuppressLint("RequestInstallPackagesPolicy")
-    private suspend fun commit(session: Session) {
+    protected open suspend fun commit(config: ConfigModel, sessionId: Int, session: Session) {
         val receiver = LocalIntentReceiver(reflect)
         session.commit(receiver.getIntentSender())
         PackageManagerUtil.installResultVerify(context, receiver)
@@ -492,4 +506,36 @@ abstract class IBinderAppInstallerRepoImpl(
             }
         }
     }
+}
+
+internal fun resolveSessionAbiOverride(
+    sourceType: DataType,
+    baseArchitecture: Architecture?,
+    deviceArchitecture: Architecture,
+    enableAbiOverride: Boolean = false,
+    tryDifferentArchitecture: Boolean = false,
+): String? {
+    if (!enableAbiOverride) return null
+    val eligibleSource = sourceType == DataType.APK ||
+        sourceType == DataType.MULTI_APK ||
+        sourceType == DataType.MULTI_APK_ZIP
+    if (!eligibleSource) return null
+    val architecture = when (baseArchitecture) {
+        null, Architecture.NONE -> return null
+        Architecture.UNKNOWN -> Architecture.ARM
+        else -> baseArchitecture
+    }
+    if (!tryDifferentArchitecture && !architecture.isSameFamilyAs(deviceArchitecture)) return null
+    return architecture.arch
+}
+
+private fun Architecture.isSameFamilyAs(other: Architecture): Boolean = when (this) {
+    Architecture.ARMEABI, Architecture.ARM, Architecture.ARM64 ->
+        other in listOf(Architecture.ARMEABI, Architecture.ARM, Architecture.ARM64)
+
+    Architecture.X86, Architecture.X86_64 -> other in listOf(Architecture.X86, Architecture.X86_64)
+
+    Architecture.MIPS, Architecture.MIPS64 -> other in listOf(Architecture.MIPS, Architecture.MIPS64)
+
+    Architecture.UNKNOWN, Architecture.NONE -> false
 }

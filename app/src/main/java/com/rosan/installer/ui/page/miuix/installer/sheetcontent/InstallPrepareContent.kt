@@ -88,7 +88,7 @@ fun InstallPrepareContent(
     appInfo: AppInfoState,
     onCancel: () -> Unit,
     onInstall: () -> Unit,
-    onLongInstall: () -> Unit,
+    onLongInstall: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -149,6 +149,8 @@ fun InstallPrepareContent(
     val tagSignatureMatch = stringResource(R.string.tag_signature_match)
     val tagSignatureRotation = stringResource(R.string.tag_signature_rotation)
     val tagSignatureRotationUnconfirmed = stringResource(R.string.tag_signature_rotation_unconfirmed)
+    val tagAospSignature = stringResource(R.string.tag_aosp_signature)
+    val textAospSignature = stringResource(R.string.installer_prepare_aosp_signature)
     val sigNewInstall = stringResource(R.string.installer_prepare_signature_new_install)
     val sigMatch = stringResource(R.string.installer_prepare_signature_match)
     val sigRotationCompatible = stringResource(R.string.installer_prepare_signature_rotation_compatible)
@@ -175,6 +177,18 @@ fun InstallPrepareContent(
     val labelSignatureLineageCertificate = stringResource(R.string.installer_signature_lineage_certificate)
     val labelSignatureCurrentMarker = stringResource(R.string.installer_signature_current_marker)
     val labelSignatureSha256 = stringResource(R.string.installer_signature_sha256)
+    val labelSignatureSourceStampSha256 = stringResource(R.string.installer_signature_source_stamp_sha256)
+    val labelSignatureSourceStamp = stringResource(R.string.installer_signature_source_stamp)
+    val labelSignatureSourceStampStatus = stringResource(R.string.installer_signature_source_stamp_status)
+    val textSourceStampUnverified = stringResource(R.string.installer_signature_source_stamp_unverified)
+    val textSourceStampVerified = stringResource(R.string.installer_signature_source_stamp_verified)
+    val textSourceStampFailed = stringResource(R.string.installer_signature_source_stamp_failed)
+    val textSourceStampCertificateMismatch = stringResource(R.string.installer_signature_source_stamp_certificate_mismatch)
+    val textSourceStampVerificationError = stringResource(R.string.installer_signature_source_stamp_verification_error)
+    val labelSignatureSourceStampTimestamp = stringResource(R.string.installer_signature_source_stamp_timestamp)
+    val labelSignatureSourceStampCertificate = stringResource(R.string.installer_signature_source_stamp_certificate)
+    val labelSignatureSourceStampLineage = stringResource(R.string.installer_signature_source_stamp_lineage)
+    val labelSignatureInformation = stringResource(R.string.installer_signature_information)
     val labelSignatureSha1 = stringResource(R.string.installer_signature_sha1)
     val labelSignatureSubject = stringResource(R.string.installer_signature_subject)
     val labelSignatureIssuer = stringResource(R.string.installer_signature_issuer)
@@ -199,7 +213,10 @@ fun InstallPrepareContent(
     val labelXposedMinApi = stringResource(R.string.installer_xposed_min_api)
     val labelXposedTargetApi = stringResource(R.string.installer_xposed_target_api)
 
-    val installResources = remember(errorColor, primaryColor) {
+    val labelSignatureHybridClassical = stringResource(R.string.installer_signature_hybrid_classical)
+    val labelSignatureHybridPqc = stringResource(R.string.installer_signature_hybrid_pqc)
+
+    val installResources = remember(errorColor, primaryColor, tagAospSignature, textAospSignature) {
         InstallNoticeResources(
             tagDowngrade = tagDowngrade,
             textDowngrade = downgradeWarning,
@@ -207,6 +224,8 @@ fun InstallPrepareContent(
             tagSignatureMatch = tagSignatureMatch,
             tagSignatureRotation = tagSignatureRotation,
             tagSignatureRotationUnconfirmed = tagSignatureRotationUnconfirmed,
+            tagAospSignature = tagAospSignature,
+            textAospSignature = textAospSignature,
             textSigNewInstall = sigNewInstall,
             textSigMatch = sigMatch,
             textSigRotationCompatible = sigRotationCompatible,
@@ -230,7 +249,21 @@ fun InstallPrepareContent(
             labelSignatureCertificateLineage = labelSignatureCertificateLineage,
             labelSignatureLineageCertificate = labelSignatureLineageCertificate,
             labelSignatureCurrentMarker = labelSignatureCurrentMarker,
+            labelSignatureHybridClassical = labelSignatureHybridClassical,
+            labelSignatureHybridPqc = labelSignatureHybridPqc,
             labelSignatureSha256 = labelSignatureSha256,
+            labelSignatureSourceStampSha256 = labelSignatureSourceStampSha256,
+            labelSignatureSourceStamp = labelSignatureSourceStamp,
+            labelSignatureSourceStampStatus = labelSignatureSourceStampStatus,
+            textSourceStampUnverified = textSourceStampUnverified,
+            textSourceStampVerified = textSourceStampVerified,
+            textSourceStampFailed = textSourceStampFailed,
+            textSourceStampCertificateMismatch = textSourceStampCertificateMismatch,
+            textSourceStampVerificationError = textSourceStampVerificationError,
+            labelSignatureSourceStampTimestamp = labelSignatureSourceStampTimestamp,
+            labelSignatureSourceStampCertificate = labelSignatureSourceStampCertificate,
+            labelSignatureSourceStampLineage = labelSignatureSourceStampLineage,
+            labelSignatureInformation = labelSignatureInformation,
             labelSignatureSha1 = labelSignatureSha1,
             labelSignatureSubject = labelSignatureSubject,
             labelSignatureIssuer = labelSignatureIssuer,
@@ -648,11 +681,13 @@ fun InstallPrepareContent(
                     hasLongPressed = false
                     // Wait for the system's default long press duration
                     delay(viewConfiguration.longPressTimeoutMillis.milliseconds)
-                    hasLongPressed = true
-                    // Perform haptic feedback immediately before the action
-                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    // Trigger the long press action
-                    onLongInstall()
+                    onLongInstall?.let { action ->
+                        hasLongPressed = true
+                        // Perform haptic feedback immediately before the action
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        // Trigger the long press action
+                        action()
+                    }
                 }
             }
 
@@ -689,6 +724,7 @@ fun InstallPrepareContent(
                     onClick = {
                         // Only trigger normal install if long press didn't happen
                         if (!hasLongPressed) onInstall()
+                        hasLongPressed = false
                     },
                     enabled = canInstall,
                     text = stringResource(buttonTextId),

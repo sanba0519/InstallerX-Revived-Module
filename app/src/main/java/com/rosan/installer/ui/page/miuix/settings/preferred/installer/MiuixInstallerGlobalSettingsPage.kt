@@ -236,11 +236,11 @@ fun MiuixInstallerGlobalSettingsPage(useBlur: Boolean, viewModel: InstallerSetti
                         exit = fadeOut() + shrinkVertically(),
                     ) {
                         MiuixSwitchWidget(
-                            title = stringResource(R.string.config_check_split_package_signatures),
-                            description = stringResource(R.string.config_check_split_package_signatures_desc),
-                            checked = uiState.checkSplitPackageSignatures,
+                            title = stringResource(R.string.config_check_source_stamp),
+                            description = stringResource(R.string.config_check_source_stamp_desc),
+                            checked = uiState.checkSourceStamp,
                             onCheckedChange = {
-                                viewModel.dispatch(InstallerSettingsAction.ChangeCheckSplitPackageSignatures(it))
+                                viewModel.dispatch(InstallerSettingsAction.ChangeCheckSourceStamp(it))
                             },
                         )
                     }
