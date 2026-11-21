@@ -36,40 +36,6 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { setUrl("https://jitpack.io") }
         // maven { setUrl("https://maven.scijava.org/content/repositories/public/") }
-        // GitHub Packages (compose-miuix-ui/miuix)
-        //
-        // NOTE:
-        // GitHub Packages does NOT support anonymous access.
-        // Even if the repository is public or you are a member of the organization,
-        // authentication is still required to resolve dependencies.
-        //
-        // Required environment variables (recommended):
-        //   - GITHUB_ACTOR : your GitHub username
-        //   - GITHUB_TOKEN : GitHub Actions token, or a PAT classic with `read:packages`
-        //
-        // Alternative:
-        //   - Define `gpr.user` and `gpr.key` in ~/.gradle/gradle.properties (NOT in this repo)
-        //
-        // This configuration is intentionally placed in settings.gradle.kts
-        // to work with RepositoriesMode.FAIL_ON_PROJECT_REPOS.
-        val gprUser = providers.gradleProperty("gpr.user")
-            .orElse(providers.environmentVariable("GITHUB_ACTOR"))
-
-        val gprKey = providers.gradleProperty("gpr.key")
-            .orElse(providers.environmentVariable("GITHUB_TOKEN"))
-
-        maven {
-            name = "GitHubPackagesMiuix"
-            url = uri("https://maven.pkg.github.com/compose-miuix-ui/miuix")
-
-            if (gprUser.isPresent && gprKey.isPresent) {
-                credentials {
-                    username = gprUser.get()
-                    password = gprKey.get()
-                }
-            }
-        }
-
         mavenLocal()
     }
 }

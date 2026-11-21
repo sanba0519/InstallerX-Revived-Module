@@ -97,9 +97,6 @@ jobs:
           echo "storePassword=${SIGNING_STORE_PASSWORD}" >> keystore.properties
 
       - name: Build Preview Release APK
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew assemblePreviewRelease
 
       - name: Find and Rename Preview APKs

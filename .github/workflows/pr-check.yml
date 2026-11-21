@@ -98,9 +98,6 @@ jobs:
 
       - name: Run Unstable Debug Unit Tests
         # Use the same application ID override as the APK build.
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew testUnstableDebugUnitTest --no-configuration-cache -PAPP_ID="com.rosan.installer.x.revived.test"
 
   build_for_pr:
@@ -137,10 +134,6 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Preview Debug APK
-        # Use GITHUB_TOKEN only if strictly necessary for fetching packages
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew assemblePreviewDebug --no-configuration-cache -PAPP_ID="com.rosan.installer.x.revived.test"
 
       - name: Upload Debug APK

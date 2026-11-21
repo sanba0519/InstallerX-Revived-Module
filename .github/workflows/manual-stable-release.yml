@@ -124,9 +124,6 @@ jobs:
           echo "apk_version=${VERSION_NAME} [Code: ${VERSION_CODE}]" >> $GITHUB_STEP_SUMMARY
 
       - name: Build Stable Release APKs
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           echo "Building APK with package: com.android.packageinstaller"
